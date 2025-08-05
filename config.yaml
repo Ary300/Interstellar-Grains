@@ -1,0 +1,21 @@
+output_filename: results/science_campaign_v1.csv
+max_time_s: 10000000.0
+ensemble_runs: 3
+parameter_sweeps:
+  surface_temperature_k:
+  - 10.0
+  - 20.0
+  - 30.0
+  h_gas_density_cm3:
+  - 100.0
+  - 1000.0
+  - 10000.0
+  uv_flux_factor:
+  - 0.1
+  - 1.0
+  - 10.0
+gas_temperature_k: 100.0
+sticking_probability: 0.3
+initial_h_coverage: 0.0
+grain_radius_um: 0.1
+site_area_angstroms_sq: 9
