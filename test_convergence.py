@@ -30,7 +30,7 @@ class TestConvergence(unittest.TestCase):
             "porosity_fraction": 0.2,
             "surface_defect_fraction": 0.15,
             "chemisorption_fraction": 0.1,
-            "E_phys_mean_meV": 50.0,  # ~500 K
+            "E_phys_mean_meV": 45.0,  # 45 meV = ~520 K equivalent
             "E_chem_mean_eV": 1.75    # 1.5-2.0 eV range
         }
 

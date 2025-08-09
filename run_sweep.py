@@ -98,7 +98,7 @@ def run_sweep(config_file="config.yaml"):
         "porosity_fraction": config.get("porosity_fraction", 0.2),
         "surface_defect_fraction": config.get("surface_defect_fraction", 0.15),
         "chemisorption_fraction": config.get("chemisorption_fraction", 0.1),
-        "E_phys_mean_meV": config.get("E_phys_mean_meV", 50.0),  # ~500 K
+        "E_phys_mean_meV": config.get("E_phys_mean_meV", 45.0),  # 45 meV = ~520 K equivalent
         "E_chem_mean_eV": config.get("E_chem_mean_eV", 1.75),     # 1.5-2.0 eV range
         # UV Stochastic Pulse Parameters
         "uv_pulse_enabled": config.get("uv_pulse_enabled", True),
