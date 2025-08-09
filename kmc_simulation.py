@@ -1,6 +1,10 @@
 import numpy as np
 import random
 from scientific_data import surface_chemistry_data, uv_photon_flux, EV_TO_KELVIN, K_B, M_H
+from physical_rates import (
+    h_diffusion_rate, h_desorption_rate, h2_formation_lh_rate, h2_formation_er_rate,
+    uv_photodesorption_rate, uv_h2_formation_rate, adsorption_rate
+)
 
 class KineticMonteCarlo:
     def __init__(self, simulation_parameters):
@@ -69,6 +73,34 @@ class KineticMonteCarlo:
 
     def _generate_energy_maps(self):
         rng = np.random.default_rng()
+        
+        # Generate site types: 0=void, 1=physisorption, 2=chemisorption, 3=defect
+        self.site_types = np.zeros(self.lattice.shape, dtype=int)
+        self.site_types = np.where(self.lattice != None, 1, 0)  # Default to physisorption
+        
+        # Add chemisorption sites (10% of accessible sites)
+        chemisorption_fraction = self.simulation_parameters.get("chemisorption_fraction", 0.1)
+        accessible_mask = (self.lattice != None)
+        num_accessible = np.sum(accessible_mask)
+        num_chemisorption = int(num_accessible * chemisorption_fraction)
+        
+        if num_chemisorption > 0:
+            accessible_indices = np.where(accessible_mask)
+            chemisorption_indices = rng.choice(len(accessible_indices[0]), num_chemisorption, replace=False)
+            for idx in chemisorption_indices:
+                d, r, c = accessible_indices[0][idx], accessible_indices[1][idx], accessible_indices[2][idx]
+                self.site_types[d, r, c] = 2  # Chemisorption
+        
+        # Add defect sites (15% of accessible sites)
+        defect_fraction = self.simulation_parameters.get("surface_defect_fraction", 0.15)
+        num_defects = int(num_accessible * defect_fraction)
+        
+        if num_defects > 0:
+            defect_indices = rng.choice(len(accessible_indices[0]), num_defects, replace=False)
+            for idx in defect_indices:
+                d, r, c = accessible_indices[0][idx], accessible_indices[1][idx], accessible_indices[2][idx]
+                if self.site_types[d, r, c] == 1:  # Only convert physisorption sites to defects
+                    self.site_types[d, r, c] = 3  # Defect
         
         mean_eV = self.E_bind_mean_meV / 1000.0
         sigma_eV = self.E_bind_sigma_meV / 1000.0
@@ -155,57 +187,96 @@ class KineticMonteCarlo:
         return classical_rate + tunneling_rate
 
     def calculate_rates(self):
+        """
+        Calculate all rates using physically correct Transition State Theory
+        with quantum tunneling corrections.
+        """
         rates = {}
         surface_temp_k = self.simulation_parameters.get("surface_temperature_k")
         gas_temp_k = self.simulation_parameters.get("gas_temperature_k")
         h_gas_density = self.simulation_parameters.get("h_gas_density_cm3")
         uv_flux_factor = self.simulation_parameters.get("uv_flux_factor", 1.0)
         site_area_cm2 = self.simulation_parameters.get("site_area_angstroms_sq", 9) * 1e-16
-        pre_exp_frequency = 1e12
+        sticking_probability = self.simulation_parameters.get("sticking_probability", 0.3)
 
         accessible_sites = self.get_accessible_surface_sites()
         num_accessible_sites = len(accessible_sites[0])
         accessible_area_cm2 = num_accessible_sites * site_area_cm2
 
-        v_h_thermal = np.sqrt(8 * K_B * gas_temp_k / (np.pi * M_H))
-        gas_flux_per_cm2_s = 0.25 * h_gas_density * v_h_thermal
-        sticking_prob = self.simulation_parameters.get("sticking_probability", 0.3)
-        rates["adsorption"] = gas_flux_per_cm2_s * accessible_area_cm2 * sticking_prob
+        # 1. Adsorption rate - physically derived from gas kinetics
+        rates["adsorption"] = adsorption_rate(
+            h_gas_density, gas_temp_k, sticking_probability, accessible_area_cm2
+        )
 
+        # 2. Eley-Rideal formation - gas impingement × cross-section × reaction probability
         if self.h_atoms_on_surface > 0:
-            rates["h2_formation_ER"] = gas_flux_per_cm2_s * surface_chemistry_data["er_cross_section_cm2"] * self.h_atoms_on_surface
+            # Calculate gas flux for ER
+            v_thermal = np.sqrt(8 * K_B * gas_temp_k / (np.pi * M_H * 1.602e-19))  # cm/s
+            gas_flux_cm2_s = 0.25 * h_gas_density * v_thermal
+            
+            rates["h2_formation_ER"] = h2_formation_er_rate(
+                gas_flux_cm2_s, self.h_atoms_on_surface
+            )
 
+        # 3. Desorption and diffusion rates - TST + quantum tunneling
+        if self.h_atoms_on_surface > 0:
             occupied_sites = self.get_occupied_sites()
             if occupied_sites:
                 total_desorption_rate = 0.0
                 total_diffusion_rate = 0.0
                 
                 for d, r, c in occupied_sites:
-                    E_bind = self.E_bind_eV_map[d, r, c]
-                    total_desorption_rate += pre_exp_frequency * np.exp(-E_bind * EV_TO_KELVIN / surface_temp_k)
-                    total_diffusion_rate += self._calculate_diffusion_rate_with_tunneling(d, r, c, surface_temp_k)
+                    # Get site-specific energetics
+                    site_type = self.site_types[d, r, c]
+                    binding_energy = self.E_bind_eV_map[d, r, c]
+                    
+                    # Desorption rate using TST
+                    desorption_rate = h_desorption_rate(binding_energy, surface_temp_k)
+                    total_desorption_rate += desorption_rate
+                    
+                    # Diffusion rate using TST + tunneling
+                    diffusion_rate = h_diffusion_rate(site_type, surface_temp_k)
+                    total_diffusion_rate += diffusion_rate
                 
                 rates["desorption"] = total_desorption_rate
                 rates["diffusion"] = total_diffusion_rate
 
+        # 4. Langmuir-Hinshelwood formation - TST for surface reactions
         if self.adjacent_h_pairs_count > 0:
-            h2_formation_barrier_ev = surface_chemistry_data["h2_formation_physisorbed_barrier_ev"]
-            rates["h2_formation_LH"] = pre_exp_frequency * np.exp(-h2_formation_barrier_ev * EV_TO_KELVIN / surface_temp_k) * self.adjacent_h_pairs_count
+            rates["h2_formation_LH"] = h2_formation_lh_rate(
+                surface_temp_k, self.adjacent_h_pairs_count
+            )
 
+        # 5. UV processes - photon flux × cross-section × yield
         if uv_flux_factor > 0:
             uv_photon_flux_total = uv_photon_flux["integrated_fuv_photon_flux_photons_cm2_s"] * uv_flux_factor
             base_uv_rate = 5.0e-8
             
+            # UV pulse rate (stochastic model)
+            base_uv_rate = 5.0e-8  # 5 photons grain⁻¹ yr⁻¹
             if self.uv_pulse_enabled:
                 rates["uv_pulse_start"] = base_uv_rate * uv_flux_factor
             
             if self.uv_pulse_active:
                 if self.h_atoms_on_surface > 0:
-                    rates["uv_photodesorption"] = base_uv_rate * uv_flux_factor * self.h_atoms_on_surface
+                    # Photodesorption using physical cross-sections and yields
+                    rates["uv_photodesorption"] = uv_photodesorption_rate(
+                        uv_photon_flux_total, self.h_atoms_on_surface
+                    )
                 
                 if self.adjacent_h_pairs_count > 0:
-                    rates["h2_formation_UV"] = uv_photon_flux_total * (2 * site_area_cm2) * surface_chemistry_data["uv_h2_formation_yield_per_pair"] * self.adjacent_h_pairs_count
+                    # UV-assisted H2 formation
+                    rates["h2_formation_UV"] = uv_h2_formation_rate(
+                        uv_photon_flux_total, self.adjacent_h_pairs_count, site_area_cm2
+                    )
                 
+                # UV-induced defect creation (simplified model)
+                accessible_surface_sites = self.get_accessible_surface_sites()
+                if len(accessible_surface_sites[0]) > 0:
+                    defect_creation_rate = self.uv_defect_creation_rate / (3.154e13)  # Convert Myr to s
+                    rates["uv_defect_creation"] = defect_creation_rate * uv_flux_factor
+                
+                # UV-stimulated diffusion enhancement
                 uv_diffusion_factor = float(self.simulation_parameters.get("uv_stimulated_diffusion_factor", 1.0))
                 if uv_diffusion_factor > 1.0 and "diffusion" in rates:
                     rates["uv_stimulated_diffusion"] = (uv_diffusion_factor - 1.0) * rates["diffusion"]
