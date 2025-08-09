@@ -83,27 +83,16 @@ def run_sweep(config_file="config.yaml"):
         "gas_temperature_k": config.get("gas_temperature_k", 100.0),
         "h_gas_density_cm3": config.get("h_gas_density_cm3", 1e2),
         "sticking_probability": config.get("sticking_probability", 0.3),
-        "initial_h_coverage": config.get("initial_h_coverage", 0.1),
-        "use_site_heterogeneity": config.get("use_site_heterogeneity", True),
-        "heterogeneity_E_bind_mean_meV": config.get("heterogeneity_E_bind_mean_meV"),
-        "heterogeneity_E_bind_sigma_meV": config.get("heterogeneity_E_bind_sigma_meV"),
-        "heterogeneity_E_diff_mean_eV": config.get("heterogeneity_E_diff_mean_eV"),
-        "heterogeneity_E_diff_sigma_eV": config.get("heterogeneity_E_diff_sigma_eV"),
+        "initial_h_coverage": config.get("initial_h_coverage", 0.0),
         "uv_flux_factor": config.get("uv_flux_factor", 1.0),
-        "enable_uv_photodissociation": config.get("enable_uv_photodissociation", True),
-        "uv_photodissociation_yield_per_pair": config.get("uv_photodissociation_yield_per_pair", 1e-6),
         "uv_stimulated_diffusion_factor": config.get("uv_stimulated_diffusion_factor", 2.0),
-        # 3D Lattice Parameters
         "use_3d_lattice": config.get("use_3d_lattice", True),
         "porosity_fraction": config.get("porosity_fraction", 0.2),
-        "surface_defect_fraction": config.get("surface_defect_fraction", 0.15),
-        "chemisorption_fraction": config.get("chemisorption_fraction", 0.1),
-        "E_phys_mean_meV": config.get("E_phys_mean_meV", 45.0),  # 45 meV = ~520 K equivalent
-        "E_chem_mean_eV": config.get("E_chem_mean_eV", 1.75),     # 1.5-2.0 eV range
-        # UV Stochastic Pulse Parameters
+        "E_phys_mean_meV": config.get("E_phys_mean_meV", 45.0),
+        "heterogeneity_E_bind_sigma_meV": config.get("heterogeneity_E_bind_sigma_meV", 5.0),
         "uv_pulse_enabled": config.get("uv_pulse_enabled", True),
-        "uv_defect_creation_rate": config.get("uv_defect_creation_rate", 0.5),  # sites/Myr
-        "uv_pulse_duration": config.get("uv_pulse_duration", 1e-6),  # s
+        "uv_defect_creation_rate": config.get("uv_defect_creation_rate", 0.5),
+        "uv_pulse_duration": config.get("uv_pulse_duration", 1e-6),
     }
     base_params = {k: v for k, v in base_params.items() if v is not None}
 

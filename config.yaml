@@ -5,12 +5,9 @@ ensemble_runs: 3
 # 3D Lattice Parameters
 use_3d_lattice: true
 porosity_fraction: 0.2
-surface_defect_fraction: 0.15
-chemisorption_fraction: 0.1
 
 # Energy Parameters for Different Site Types
 E_phys_mean_meV: 45.0  # 45 meV = ~520 K equivalent (30-60 meV range)
-E_chem_mean_eV: 1.75   # 1.5-2.0 eV range
 
 # UV Stochastic Pulse Parameters
 uv_pulse_enabled: true

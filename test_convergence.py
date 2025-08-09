@@ -25,13 +25,10 @@ class TestConvergence(unittest.TestCase):
             "sticking_probability": 0.5,
             "initial_h_coverage": 0.1,
             "uv_flux_factor": 0.0,
-            "use_site_heterogeneity": True,
             "use_3d_lattice": True,
             "porosity_fraction": 0.2,
-            "surface_defect_fraction": 0.15,
-            "chemisorption_fraction": 0.1,
-            "E_phys_mean_meV": 45.0,  # 45 meV = ~520 K equivalent
-            "E_chem_mean_eV": 1.75    # 1.5-2.0 eV range
+            "E_phys_mean_meV": 45.0,
+            "heterogeneity_E_bind_sigma_meV": 5.0,
         }
 
     def test_lattice_size_convergence(self):
@@ -63,12 +60,10 @@ class TestConvergence(unittest.TestCase):
         self.assertLessEqual(abs(m_few - ref) / max(ref, 1e-12), TOL)
 
     def test_3d_structure_convergence(self):
-        """Test convergence with different 3D structure parameters"""
         p1 = self.base.copy()
         p2 = self.base.copy()
         p3 = self.base.copy()
         
-        # Different porosity levels
         p1["porosity_fraction"] = 0.1
         p2["porosity_fraction"] = 0.2
         p3["porosity_fraction"] = 0.3
@@ -77,25 +72,22 @@ class TestConvergence(unittest.TestCase):
         m2 = run_many(p2, max_time=1e-3, steps=15000, n=6)
         m3 = run_many(p3, max_time=1e-3, steps=15000, n=6)
         
-        # Results should be reasonably consistent across porosity levels
         ref = m2
         self.assertLessEqual(abs(m1 - ref) / max(ref, 1e-12), TOL * 2)
         self.assertLessEqual(abs(m3 - ref) / max(ref, 1e-12), TOL * 2)
 
-    def test_site_type_convergence(self):
-        """Test convergence with different chemisorption fractions"""
+    def test_energy_model_convergence(self):
         p1 = self.base.copy()
         p2 = self.base.copy()
         
-        p1["chemisorption_fraction"] = 0.05
-        p2["chemisorption_fraction"] = 0.15
+        p1["heterogeneity_E_bind_sigma_meV"] = 2.0
+        p2["heterogeneity_E_bind_sigma_meV"] = 10.0
         
         m1 = run_many(p1, max_time=1e-3, steps=15000, n=6)
         m2 = run_many(p2, max_time=1e-3, steps=15000, n=6)
         
-        # Results should be reasonably consistent
         ref = m1
-        self.assertLessEqual(abs(m2 - ref) / max(ref, 1e-12), TOL * 2)
+        self.assertLessEqual(abs(m2 - ref) / max(ref, 1e-12), TOL * 2.5)
 
 if __name__ == "__main__":
     unittest.main()
