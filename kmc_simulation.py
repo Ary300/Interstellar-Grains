@@ -29,7 +29,7 @@ class KineticMonteCarlo:
         
         # Energy parameters for different site types
         self.E_phys_mean_meV = float(self.simulation_parameters.get(
-            "E_phys_mean_meV", 50.0  # ~500 K = 50 meV
+            "E_phys_mean_meV", 45.0  # 45 meV = ~520 K equivalent
         ))
         self.E_chem_mean_eV = float(self.simulation_parameters.get("E_chem_mean_eV", 1.75))  # 1.5-2.0 eV range
         self.E_bind_sigma_meV = float(self.simulation_parameters.get("heterogeneity_E_bind_sigma_meV", 5.0))
@@ -137,11 +137,10 @@ class KineticMonteCarlo:
                     if site_type == 0:  # void
                         self.E_bind_eV_map[d, r, c] = 0.0
                         self.E_diff_eV_map[d, r, c] = 0.0
-                    elif site_type == 1:  # physisorption (450-550 K range)
-                        # Convert K to eV: 500 K ≈ 43 meV
-                        E_bind_kelvin = rng.normal(500.0, 50.0)  # 450-550 K range
-                        E_bind_kelvin = np.clip(E_bind_kelvin, 450.0, 550.0)
-                        E_bind_eV = E_bind_kelvin * 8.617e-5  # Convert K to eV
+                    elif site_type == 1:  # physisorption (30-60 meV range)
+                        # Physisorption binding energy: 30-60 meV (350-700 K equivalent)
+                        E_bind_eV = rng.normal(0.045, 0.0075)  # 45 ± 7.5 meV (30-60 meV range)
+                        E_bind_eV = np.clip(E_bind_eV, 0.030, 0.060)  # Clip to valid range
                         self.E_bind_eV_map[d, r, c] = E_bind_eV
                         # Diffusion barrier is 0.3 times binding energy
                         self.E_diff_eV_map[d, r, c] = 0.3 * E_bind_eV
