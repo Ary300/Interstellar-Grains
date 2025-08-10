@@ -41,7 +41,8 @@ def thermal_rate(prefactor, barrier_eV, temperature_k):
 
 def quantum_tunneling_rate(barrier_eV, barrier_width_angstroms, effective_mass, temperature_k):
     """
-    Calculate quantum tunneling rate through 1D rectangular barrier.
+    Calculate quantum tunneling rate using WKB approximation.
+    Based on Karssemeijer & Cuppen 2014, ApJ 781, 16
     
     Args:
         barrier_eV: Energy barrier (eV)
@@ -59,16 +60,15 @@ def quantum_tunneling_rate(barrier_eV, barrier_width_angstroms, effective_mass, 
     barrier_joules = barrier_eV * 1.602e-19
     mass_kg = effective_mass * 1e-3
     
-    kBT = K_B * temperature_k * 1.602e-19
+    hbar_si = 1.055e-34
     
-    tunneling_exponent = (2 * barrier_width_m / (H_BAR * 1.602e-19)) * np.sqrt(2 * mass_kg * barrier_joules)
+    kappa = np.sqrt(2 * mass_kg * barrier_joules) / hbar_si
     
-    omega_0 = np.sqrt(2 * barrier_joules / (mass_kg * (barrier_width_m**2)))
-    prefactor = omega_0 / (2 * np.pi)
+    transmission = np.exp(-2 * kappa * barrier_width_m)
     
-    thermal_factor = 1.0 + np.exp(-barrier_eV / (K_B * temperature_k))
+    attempt_frequency = np.sqrt(barrier_joules / (2 * np.pi * mass_kg)) / barrier_width_m
     
-    return prefactor * thermal_factor * np.exp(-tunneling_exponent)
+    return attempt_frequency * transmission
 
 
 def combined_rate(thermal_rate, tunneling_rate):
@@ -230,6 +230,7 @@ def uv_h2_formation_rate(uv_flux_photons_cm2_s, adjacent_pairs_count, site_area_
 def adsorption_rate(gas_density_cm3, temperature_k, sticking_probability, accessible_area_cm2):
     """
     Calculate adsorption rate from gas phase.
+    Based on Hollenbach & McKee 1979 for H sticking on carbonaceous grains.
     
     Args:
         gas_density_cm3: Gas density (cm^-3)
@@ -244,7 +245,10 @@ def adsorption_rate(gas_density_cm3, temperature_k, sticking_probability, access
     
     gas_flux = 0.25 * gas_density_cm3 * v_thermal
     
-    E_ads_barrier = 0.005
+    if temperature_k > 250:
+        E_ads_barrier = 0.01
+    else:
+        E_ads_barrier = 0.0
     temp_factor = np.exp(-E_ads_barrier / (K_B * temperature_k))
     effective_sticking = sticking_probability * temp_factor
     

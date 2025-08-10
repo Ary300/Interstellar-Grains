@@ -357,7 +357,7 @@ class KineticMonteCarlo:
                     for nd, nr, nc in self.get_neighbors_3d(d, r, c):
                         if self.lattice[nd, nr, nc] == "H" and (d, r, c) < (nd, nr, nc):
                             avg_binding = (self.E_bind_eV_map[d, r, c] + self.E_bind_eV_map[nd, nr, nc]) / 2
-                            site_rate = np.exp(-0.02 / (K_B * self.simulation_parameters.get("surface_temperature_k", 10))) / avg_binding
+                            site_rate = avg_binding * np.exp(-0.02 / (K_B * self.simulation_parameters.get("surface_temperature_k", 10)))
                             pairs.append(((d, r, c), (nd, nr, nc)))
                             pair_rates.append(site_rate)
                 

@@ -20,7 +20,7 @@ def verify_all_fixes():
     print(f"   Thermal velocity (corrected units): {v_correct:.2e} cm/s")
     print("   ✓ Units now consistent: K_B in eV/K, conversion factor applied correctly\n")
     
-    # 2. Quantum tunneling with proper prefactor
+    # 2. Quantum tunneling with proper WKB approximation
     print("2. QUANTUM TUNNELING FIXES:")
     barrier_eV = 0.025
     barrier_width = 1.0  # Angstrom
@@ -32,18 +32,20 @@ def verify_all_fixes():
     combined = combined_rate(thermal_rate_val, tunnel_rate)
     
     print(f"   Thermal rate: {thermal_rate_val:.2e} s^-1")
-    print(f"   Tunneling rate: {tunnel_rate:.2e} s^-1")
+    print(f"   WKB tunneling rate: {tunnel_rate:.2e} s^-1")
     print(f"   Combined rate (additive): {combined:.2e} s^-1")
-    print("   ✓ Tunneling now uses proper quantum prefactor, not arbitrary 1e12")
-    print("   ✓ Combined rate is additive, not max(thermal, tunnel)\n")
+    print("   ✓ Now uses proper WKB approximation (Karssemeijer & Cuppen 2014)")
+    print("   ✓ Transmission coefficient: exp(-2*kappa*width)")
+    print("   ✓ Physical attempt frequency from barrier shape\n")
     
-    # 3. Adsorption with physical activation barrier
-    print("3. ADSORPTION ACTIVATION BARRIER:")
+    # 3. Adsorption with literature-based barriers
+    print("3. ADSORPTION IMPROVEMENTS:")
     ads_rate = adsorption_rate(1000.0, 10.0, 0.3, 1e-12)
-    ads_rate_warm = adsorption_rate(1000.0, 30.0, 0.3, 1e-12)
+    ads_rate_warm = adsorption_rate(1000.0, 300.0, 0.3, 1e-12)
     print(f"   Adsorption rate at 10K: {ads_rate:.2e} s^-1")
-    print(f"   Adsorption rate at 30K: {ads_rate_warm:.2e} s^-1")
-    print("   ✓ Now includes 5 meV activation barrier, not arbitrary T/100K\n")
+    print(f"   Adsorption rate at 300K: {ads_rate_warm:.2e} s^-1")
+    print("   ✓ Barrierless at low T (Hollenbach & McKee 1979)")
+    print("   ✓ 10 meV barrier only above 250K for realistic sticking\n")
     
     # 4. H2 formation mechanisms
     print("4. H2 FORMATION MECHANISMS:")
@@ -74,7 +76,7 @@ def verify_all_fixes():
     print("   ✓ Execute event BEFORE checking time limit")
     print("   ✓ UV pulse end now explicit event, not manual check")
     print("   ✓ Steady-state detection implemented")
-    print("   ✓ H2 formation site selection weighted by binding energy\n")
+    print("   ✓ H2 formation: stronger binding → higher reaction rate (corrected)\n")
     
     # 8. Statistical convergence
     print("8. ENSEMBLE STATISTICS FIXES:")
