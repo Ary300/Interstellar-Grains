@@ -18,11 +18,22 @@ uv_pulse_duration: 1e-6       # s
 parameter_sweeps:
   surface_temperature_k:
   - 10.0
+  - 15.0
   - 20.0
+  - 25.0
   - 30.0
+  - 40.0
+  - 50.0
+  - 75.0
+  - 100.0
+  - 150.0
+  - 200.0
+  - 250.0
   h_gas_density_cm3:
   - 100.0
+  - 300.0
   - 1000.0
+  - 3000.0
   - 10000.0
   uv_flux_factor:
   - 0.1

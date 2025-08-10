@@ -53,25 +53,27 @@ def quantum_tunneling_rate(barrier_eV, barrier_width_angstroms, effective_mass, 
         Tunneling rate (s^-1)
     """
     if barrier_eV <= 0:
-        return 0.0
+        return 1e12
     
-    # Convert to SI units
-    barrier_width_cm = barrier_width_angstroms * 1e-8
+    barrier_width_m = barrier_width_angstroms * 1e-10
     barrier_joules = barrier_eV * 1.602e-19
     mass_kg = effective_mass * 1e-3
     
-    # Tunneling exponent
-    tunneling_exponent = (2 * barrier_width_cm / H_BAR) * np.sqrt(2 * mass_kg * barrier_joules)
+    kBT = K_B * temperature_k * 1.602e-19
     
-    # Base tunneling rate (simplified)
-    base_rate = 1e12  # s^-1
+    tunneling_exponent = (2 * barrier_width_m / (H_BAR * 1.602e-19)) * np.sqrt(2 * mass_kg * barrier_joules)
     
-    return base_rate * np.exp(-tunneling_exponent)
+    omega_0 = np.sqrt(2 * barrier_joules / (mass_kg * (barrier_width_m**2)))
+    prefactor = omega_0 / (2 * np.pi)
+    
+    thermal_factor = 1.0 + np.exp(-barrier_eV / (K_B * temperature_k))
+    
+    return prefactor * thermal_factor * np.exp(-tunneling_exponent)
 
 
 def combined_rate(thermal_rate, tunneling_rate):
     """
-    Combine thermal and tunneling rates (take the faster channel).
+    Combine thermal and tunneling rates using quantum statistics.
     
     Args:
         thermal_rate: Thermal rate (s^-1)
@@ -80,7 +82,7 @@ def combined_rate(thermal_rate, tunneling_rate):
     Returns:
         Combined rate (s^-1)
     """
-    return max(thermal_rate, tunneling_rate)
+    return thermal_rate + tunneling_rate
 
 
 def h_diffusion_rate(site_type, temperature_k):
@@ -238,15 +240,12 @@ def adsorption_rate(gas_density_cm3, temperature_k, sticking_probability, access
     Returns:
         Adsorption rate (s^-1)
     """
-    # Thermal velocity of H atoms
-    v_thermal = np.sqrt(8 * K_B * temperature_k / (np.pi * M_H * 1.602e-19))  # cm/s
+    v_thermal = np.sqrt(8 * K_B * temperature_k * 1.602e-19 / (np.pi * M_H))
     
-    # Gas flux
-    gas_flux = 0.25 * gas_density_cm3 * v_thermal  # atoms cm^-2 s^-1
+    gas_flux = 0.25 * gas_density_cm3 * v_thermal
     
-    # Temperature-dependent sticking probability
-    # S(T) ∝ exp(-T/100 K) - empirical relation
-    temp_factor = np.exp(-temperature_k / 100.0)
+    E_ads_barrier = 0.005
+    temp_factor = np.exp(-E_ads_barrier / (K_B * temperature_k))
     effective_sticking = sticking_probability * temp_factor
     
     return gas_flux * accessible_area_cm2 * effective_sticking

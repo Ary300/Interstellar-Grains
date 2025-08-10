@@ -59,7 +59,7 @@ surface_chemistry_data = {
 
 # UV photon flux (existing)
 uv_photon_flux = {
-    "integrated_fuv_photon_flux_photons_cm2_s": 1e8,  # Standard ISRF
+    "integrated_fuv_photon_flux_photons_cm2_s": 4e8,  
 }
 
 

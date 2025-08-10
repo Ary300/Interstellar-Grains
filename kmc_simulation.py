@@ -74,44 +74,63 @@ class KineticMonteCarlo:
     def _generate_energy_maps(self):
         rng = np.random.default_rng()
         
-        # Generate site types: 0=void, 1=physisorption, 2=chemisorption, 3=defect
         self.site_types = np.zeros(self.lattice.shape, dtype=int)
-        self.site_types = np.where(self.lattice != None, 1, 0)  # Default to physisorption
         
-        # Add chemisorption sites (10% of accessible sites)
-        chemisorption_fraction = self.simulation_parameters.get("chemisorption_fraction", 0.1)
-        accessible_mask = (self.lattice != None)
-        num_accessible = np.sum(accessible_mask)
-        num_chemisorption = int(num_accessible * chemisorption_fraction)
+        for d in range(self.depth_layers):
+            for r in range(self.surface_dimension):
+                for c in range(self.surface_dimension):
+                    if self.lattice[d, r, c] is not None:
+                        neighbors = self.get_neighbors_3d(d, r, c)
+                        num_neighbors = len([n for n in neighbors if self.lattice[n[0], n[1], n[2]] is not None])
+                        
+                        if d == 0:
+                            if num_neighbors <= 2:
+                                site_prob = rng.random()
+                                if site_prob < 0.15:
+                                    self.site_types[d, r, c] = 3
+                                elif site_prob < 0.25:
+                                    self.site_types[d, r, c] = 2
+                                else:
+                                    self.site_types[d, r, c] = 1
+                            elif num_neighbors <= 4:
+                                if rng.random() < 0.1:
+                                    self.site_types[d, r, c] = 2
+                                else:
+                                    self.site_types[d, r, c] = 1
+                            else:
+                                self.site_types[d, r, c] = 1
+                        else:
+                            self.site_types[d, r, c] = 1
         
-        if num_chemisorption > 0:
-            accessible_indices = np.where(accessible_mask)
-            chemisorption_indices = rng.choice(len(accessible_indices[0]), num_chemisorption, replace=False)
-            for idx in chemisorption_indices:
-                d, r, c = accessible_indices[0][idx], accessible_indices[1][idx], accessible_indices[2][idx]
-                self.site_types[d, r, c] = 2  # Chemisorption
+        mean_eV = self.E_bind_mean_meV * 1e-3
+        sigma_eV = self.E_bind_sigma_meV * 1e-3
         
-        # Add defect sites (15% of accessible sites)
-        defect_fraction = self.simulation_parameters.get("surface_defect_fraction", 0.15)
-        num_defects = int(num_accessible * defect_fraction)
-        
-        if num_defects > 0:
-            defect_indices = rng.choice(len(accessible_indices[0]), num_defects, replace=False)
-            for idx in defect_indices:
-                d, r, c = accessible_indices[0][idx], accessible_indices[1][idx], accessible_indices[2][idx]
-                if self.site_types[d, r, c] == 1:  # Only convert physisorption sites to defects
-                    self.site_types[d, r, c] = 3  # Defect
-        
-        mean_eV = self.E_bind_mean_meV / 1000.0
-        sigma_eV = self.E_bind_sigma_meV / 1000.0
-        
-        E_bind_distribution = rng.normal(mean_eV, sigma_eV, self.lattice.shape)
-        
-        self.E_bind_eV_map = np.where(self.lattice != None, E_bind_distribution, 0.0)
-        self.E_bind_eV_map = np.clip(self.E_bind_eV_map, 0.0, None)
-        
-        self.E_diff_eV_map = 0.3 * self.E_bind_eV_map
-        self.E_diff_eV_map = np.where(self.lattice != None, self.E_diff_eV_map, 0.0)
+        for d in range(self.depth_layers):
+            for r in range(self.surface_dimension):
+                for c in range(self.surface_dimension):
+                    if self.lattice[d, r, c] is not None:
+                        site_type = self.site_types[d, r, c]
+                        neighbors = self.get_neighbors_3d(d, r, c)
+                        num_neighbors = len([n for n in neighbors if self.lattice[n[0], n[1], n[2]] is not None])
+                        
+                        if site_type == 1:
+                            base_energy = mean_eV
+                            coordination_factor = 1.0 + 0.1 * (num_neighbors - 3)
+                            self.E_bind_eV_map[d, r, c] = base_energy * coordination_factor + rng.normal(0, sigma_eV)
+                        elif site_type == 2:
+                            self.E_bind_eV_map[d, r, c] = 0.25 + rng.normal(0, 0.05)
+                        elif site_type == 3:
+                            self.E_bind_eV_map[d, r, c] = 0.35 + rng.normal(0, 0.05)
+                        
+                        if site_type == 1:
+                            self.E_diff_eV_map[d, r, c] = 0.025 + rng.normal(0, 0.005)
+                        elif site_type == 2:
+                            self.E_diff_eV_map[d, r, c] = 0.03 + rng.normal(0, 0.005)
+                        elif site_type == 3:
+                            self.E_diff_eV_map[d, r, c] = 0.015 + rng.normal(0, 0.003)
+                        
+                        self.E_bind_eV_map[d, r, c] = max(self.E_bind_eV_map[d, r, c], 0.01)
+                        self.E_diff_eV_map[d, r, c] = max(self.E_diff_eV_map[d, r, c], 0.01)
 
     def _initialize_h_atoms(self, initial_coverage):
         accessible_sites = np.where(self.lattice[0, :, :] != None)
@@ -129,9 +148,10 @@ class KineticMonteCarlo:
         neighbors = []
         moves_2d = [(-1, 0), (1, 0), (0, -1), (0, 1)]
         for dr, dc in moves_2d:
-            nr, nc = (r + dr) % self.surface_dimension, (c + dc) % self.surface_dimension
-            if self.lattice[d, nr, nc] is not None:
-                neighbors.append((d, nr, nc))
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < self.surface_dimension and 0 <= nc < self.surface_dimension:
+                if self.lattice[d, nr, nc] is not None:
+                    neighbors.append((d, nr, nc))
         
         if d < self.depth_layers - 1 and self.lattice[d + 1, r, c] is not None:
             neighbors.append((d + 1, r, c))
@@ -211,7 +231,7 @@ class KineticMonteCarlo:
         # 2. Eley-Rideal formation - gas impingement × cross-section × reaction probability
         if self.h_atoms_on_surface > 0:
             # Calculate gas flux for ER
-            v_thermal = np.sqrt(8 * K_B * gas_temp_k / (np.pi * M_H * 1.602e-19))  # cm/s
+            v_thermal = np.sqrt(8 * K_B * gas_temp_k * 1.602e-19 / (np.pi * M_H))
             gas_flux_cm2_s = 0.25 * h_gas_density * v_thermal
             
             rates["h2_formation_ER"] = h2_formation_er_rate(
@@ -256,6 +276,10 @@ class KineticMonteCarlo:
             base_uv_rate = 5.0e-8  # 5 photons grain⁻¹ yr⁻¹
             if self.uv_pulse_enabled:
                 rates["uv_pulse_start"] = base_uv_rate * uv_flux_factor
+            
+            if self.uv_pulse_active:
+                pulse_end_rate = 1.0 / self.uv_pulse_duration
+                rates["uv_pulse_end"] = pulse_end_rate
             
             if self.uv_pulse_active:
                 if self.h_atoms_on_surface > 0:
@@ -328,13 +352,24 @@ class KineticMonteCarlo:
         elif event_type in ["h2_formation_LH", "h2_formation_UV"]:
             if self.adjacent_h_pairs_count > 0:
                 pairs = []
+                pair_rates = []
                 for d, r, c in self.get_occupied_sites():
                     for nd, nr, nc in self.get_neighbors_3d(d, r, c):
                         if self.lattice[nd, nr, nc] == "H" and (d, r, c) < (nd, nr, nc):
+                            avg_binding = (self.E_bind_eV_map[d, r, c] + self.E_bind_eV_map[nd, nr, nc]) / 2
+                            site_rate = np.exp(-0.02 / (K_B * self.simulation_parameters.get("surface_temperature_k", 10))) / avg_binding
                             pairs.append(((d, r, c), (nd, nr, nc)))
+                            pair_rates.append(site_rate)
                 
                 if pairs:
-                    (d1, r1, c1), (d2, r2, c2) = random.choice(pairs)
+                    if len(pair_rates) > 1:
+                        total_rate = sum(pair_rates)
+                        probs = [r/total_rate for r in pair_rates]
+                        chosen_idx = random.choices(range(len(pairs)), weights=probs, k=1)[0]
+                        (d1, r1, c1), (d2, r2, c2) = pairs[chosen_idx]
+                    else:
+                        (d1, r1, c1), (d2, r2, c2) = pairs[0]
+                        
                     self.lattice[d1, r1, c1] = "C"
                     self.update_adjacent_h_pairs_count(d1, r1, c1, False)
                     self.lattice[d2, r2, c2] = "C"
@@ -360,15 +395,18 @@ class KineticMonteCarlo:
         elif event_type == "uv_pulse_start":
             self.uv_pulse_active = True
             self.last_uv_pulse_time = self.time
+            
+        elif event_type == "uv_pulse_end":
+            self.uv_pulse_active = False
 
     def run_gillespie(self, max_time, max_steps=None):
         step_count = 0
+        steady_state_check_interval = 1000
+        h2_formation_history = []
+        
         while self.time < max_time:
             if max_steps and step_count >= max_steps:
                 break
-            
-            if self.uv_pulse_active and (self.time - self.last_uv_pulse_time) >= self.uv_pulse_duration:
-                self.uv_pulse_active = False
             
             rates = self.calculate_rates()
             if not rates:
@@ -378,15 +416,29 @@ class KineticMonteCarlo:
                 break
             
             delta_t = random.expovariate(total_rate)
+            self.time += delta_t
             
-            if self.time + delta_t > max_time:
+            if self.time > max_time:
                 self.time = max_time
                 break
-            
-            self.time += delta_t
             
             chosen_event = random.choices(list(rates.keys()), weights=list(rates.values()), k=1)[0]
             self.execute_event(chosen_event)
             step_count += 1
+            
+            if step_count % steady_state_check_interval == 0:
+                h2_formation_history.append(self.h2_molecules_formed)
+                if len(h2_formation_history) >= 5:
+                    recent_rates = []
+                    for i in range(1, len(h2_formation_history)):
+                        rate = (h2_formation_history[i] - h2_formation_history[i-1]) / (steady_state_check_interval * delta_t)
+                        recent_rates.append(rate)
+                    
+                    if len(recent_rates) >= 4:
+                        avg_rate = np.mean(recent_rates[-4:])
+                        if avg_rate > 0 and all(abs(r - avg_rate) / avg_rate < 0.1 for r in recent_rates[-4:]):
+                            break
+                    h2_formation_history = h2_formation_history[-5:]
+                    
         return []
 

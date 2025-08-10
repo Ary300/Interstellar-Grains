@@ -36,6 +36,11 @@ def _aggregate_runs(rows: List[Dict[str, Any]], keys: List[str]) -> Dict[str, An
         agg[f"{k}_mean"] = mean
         agg[f"{k}_std"] = std
         agg[f"{k}_ci95"] = ci95
+        if mean > 0:
+            agg[f"{k}_relative_error"] = ci95 / mean
+        else:
+            agg[f"{k}_relative_error"] = float('inf')
+    agg["converged"] = all(agg.get(f"{k}_relative_error", float('inf')) < 0.05 for k in keys if agg.get(f"{k}_mean", 0) > 0)
     return agg
 
 def _mrn_weights(min_um: float, max_um: float, bins: int) -> Tuple[np.ndarray, np.ndarray]:
@@ -98,8 +103,8 @@ def run_sweep(config_file="config.yaml"):
 
     max_time_s = float(config.get("max_time_s", 3.154e7))
     ensemble_runs = int(config.get("ensemble_runs", 1))
-    if ensemble_runs < 20:
-        ensemble_runs = 20
+    min_ensemble_runs = max(20, ensemble_runs)
+    convergence_tolerance = float(config.get("convergence_tolerance", 0.05))
 
     parameter_sweeps = config.get("parameter_sweeps", {})
 
@@ -131,12 +136,25 @@ def run_sweep(config_file="config.yaml"):
     if not parameter_sweeps:
         if not use_mrn:
             rows = []
-            for run_id in range(ensemble_runs):
-                sim_params = _ensure_numeric(base_params.copy())
-                result = run_one_condition(sim_params, run_id)
-                rows.append(result)
-                if raw_runs_enabled:
-                    raw_rows.append(result)
+            current_runs = 0
+            max_runs = 100
+            
+            while current_runs < max_runs:
+                runs_this_batch = min(min_ensemble_runs, max_runs - current_runs)
+                for run_id in range(current_runs, current_runs + runs_this_batch):
+                    sim_params = _ensure_numeric(base_params.copy())
+                    result = run_one_condition(sim_params, run_id)
+                    rows.append(result)
+                    if raw_runs_enabled:
+                        raw_rows.append(result)
+                
+                current_runs += runs_this_batch
+                
+                if current_runs >= min_ensemble_runs:
+                    agg = _aggregate_runs(rows, metrics)
+                    if agg.get("converged", False) or current_runs >= max_runs:
+                        break
+                        
             agg = _aggregate_runs(rows, metrics)
             descriptor = {k: v for k, v in rows[0].items() if k not in ["run_id", "final_time",
                                                                         "final_h_atoms_on_surface",
