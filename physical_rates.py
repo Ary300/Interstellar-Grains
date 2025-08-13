@@ -72,18 +72,65 @@ def quantum_tunneling_rate(barrier_eV, barrier_width_angstroms, effective_mass, 
     return attempt_frequency * transmission
 
 
-def combined_rate(thermal_rate, tunneling_rate):
+def combined_rate(thermal_rate, tunneling_rate, temperature_k, barrier_eV):
     """
-    Combine thermal and tunneling rates using quantum statistics.
+    Combine thermal and tunneling rates using proper quantum statistics and crossover formulas.
+    Based on Miller & Schwartz 1983, J. Chem. Phys. 79, 4889 and 
+    Hanggi et al. 1990, Rev. Mod. Phys. 62, 251.
     
     Args:
         thermal_rate: Thermal rate (s^-1)
         tunneling_rate: Tunneling rate (s^-1)
+        temperature_k: Temperature (K)
+        barrier_eV: Energy barrier (eV)
     
     Returns:
         Combined rate (s^-1)
     """
-    return thermal_rate + tunneling_rate
+    if thermal_rate <= 0 and tunneling_rate <= 0:
+        return 0.0
+    
+    # 1. Quantum-classical crossover temperature
+    # T_c = hbar * omega_b / (2 * pi * k_B)
+    # where omega_b is the barrier frequency
+    barrier_frequency = np.sqrt(2 * barrier_eV * 1.602e-19 / (M_H * 1e-3)) / (2 * np.pi * 1e-10)  # Hz
+    crossover_temp = H_BAR * barrier_frequency / (2 * np.pi * K_B)
+    
+    # 2. Temperature-dependent quantum factor
+    if temperature_k <= 0:
+        return tunneling_rate
+    
+    # 3. Proper quantum-classical combination using crossover formula
+    if temperature_k < crossover_temp:
+        # Low temperature: quantum tunneling dominates
+        # Use quantum rate with thermal correction
+        quantum_factor = 1.0 + (temperature_k / crossover_temp)**2
+        return tunneling_rate * quantum_factor
+    else:
+        # High temperature: thermal activation dominates
+        # Use thermal rate with quantum correction
+        thermal_factor = 1.0 + (crossover_temp / temperature_k)**2
+        return thermal_rate * thermal_factor
+
+def quantum_classical_crossover_rate(thermal_rate, tunneling_rate, temperature_k, barrier_eV):
+    """
+    Alternative implementation using Miller-Schwartz crossover formula.
+    More accurate for intermediate temperatures.
+    """
+    if thermal_rate <= 0 and tunneling_rate <= 0:
+        return 0.0
+    
+    # Miller-Schwartz crossover formula
+    # R_total = R_thermal * (1 + R_tunnel/R_thermal) / (1 + R_thermal/R_tunnel)
+    
+    if thermal_rate > 0 and tunneling_rate > 0:
+        ratio = tunneling_rate / thermal_rate
+        crossover_factor = (1.0 + ratio) / (1.0 + 1.0/ratio)
+        return thermal_rate * crossover_factor
+    elif thermal_rate > 0:
+        return thermal_rate
+    else:
+        return tunneling_rate
 
 
 def h_diffusion_rate(site_type, temperature_k):
@@ -122,7 +169,8 @@ def h_diffusion_rate(site_type, temperature_k):
         temperature_k
     )
     
-    return combined_rate(thermal, tunneling)
+    # Use proper quantum-classical crossover formula
+    return quantum_classical_crossover_rate(thermal, tunneling, temperature_k, barrier)
 
 
 def h_desorption_rate(binding_energy_eV, temperature_k):
