@@ -1,0 +1,26 @@
+output_filename: results/quick_test.csv
+max_time_s: 1.0e-3
+ensemble_runs: 3
+
+use_3d_lattice: true
+porosity_fraction: 0.2
+E_phys_mean_meV: 45.0
+
+uv_pulse_enabled: true
+uv_defect_creation_rate: 0.5
+uv_pulse_duration: 1e-6
+
+parameter_sweeps:
+  surface_temperature_k:
+  - 10.0
+  - 20.0
+  h_gas_density_cm3:
+  - 1000.0
+  uv_flux_factor:
+  - 1.0
+
+gas_temperature_k: 100.0
+sticking_probability: 0.3
+initial_h_coverage: 0.0
+grain_radius_um: 0.05
+site_area_angstroms_sq: 9

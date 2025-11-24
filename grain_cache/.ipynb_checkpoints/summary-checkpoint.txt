@@ -1,0 +1,47 @@
+Generating grain library...
+Generating grain: r=0.005μm, area=50Ų
+Generating new grain (will be cached with key: 49805405...)
+Grain cached to grain_cache/grain_4980540513e537cec434f2a87febfe3a.pkl
+Generating grain: r=0.005μm, area=60Ų
+Generating new grain (will be cached with key: 06380a41...)
+Grain cached to grain_cache/grain_06380a41e5c1d3292469e6f4e00dfc1d.pkl
+Generating grain: r=0.005μm, area=80Ų
+Generating new grain (will be cached with key: ced45d3b...)
+Grain cached to grain_cache/grain_ced45d3bdce84cadf40aec206d51a26d.pkl
+Generating grain: r=0.01μm, area=50Ų
+Generating new grain (will be cached with key: fd7f5bc8...)
+Grain cached to grain_cache/grain_fd7f5bc8e2b9f1342b631c0383e91a22.pkl
+Generating grain: r=0.01μm, area=60Ų
+Generating new grain (will be cached with key: b465a39d...)
+Grain cached to grain_cache/grain_b465a39d8f2eadd106ba41bf44f0d64a.pkl
+Generating grain: r=0.01μm, area=80Ų
+Generating new grain (will be cached with key: e2a8b24a...)
+Grain cached to grain_cache/grain_e2a8b24a55a1e7eb0aaa85fedf6e1e78.pkl
+Generating grain: r=0.02μm, area=50Ų
+Generating new grain (will be cached with key: dfdde1a1...)
+Grain cached to grain_cache/grain_dfdde1a1670c6887bec7be62f037b2b4.pkl
+Generating grain: r=0.02μm, area=60Ų
+Generating new grain (will be cached with key: 806686c2...)
+Grain cached to grain_cache/grain_806686c25ac24015dc2a33b2c8bb7306.pkl
+Generating grain: r=0.02μm, area=80Ų
+Generating new grain (will be cached with key: c932e501...)
+Grain cached to grain_cache/grain_c932e5014552f24c8a01160d3e6a0901.pkl
+Generating grain: r=0.05μm, area=50Ų
+Generating new grain (will be cached with key: 86368636...)
+Grain cached to grain_cache/grain_86368636484e46fbb82c5ec60840c638.pkl
+Generating grain: r=0.05μm, area=60Ų
+Generating new grain (will be cached with key: 750247ac...)
+Grain cached to grain_cache/grain_750247ac1c2d0be0a0da84cdcf2db169.pkl
+Generating grain: r=0.05μm, area=80Ų
+Generating new grain (will be cached with key: 057ddf38...)
+Grain cached to grain_cache/grain_057ddf38892913f10917bb461a9af43a.pkl
+Generating grain: r=0.1μm, area=50Ų
+Generating new grain (will be cached with key: 299e1534...)
+Grain cached to grain_cache/grain_299e153421db069e822b28a58325e247.pkl
+Generating grain: r=0.1μm, area=60Ų
+Generating new grain (will be cached with key: b172e7ca...)
+Grain cached to grain_cache/grain_b172e7ca3bfaec70aeb439671e2391d4.pkl
+Generating grain: r=0.1μm, area=80Ų
+Generating new grain (will be cached with key: 33d56395...)
+Grain cached to grain_cache/grain_33d563953d50cd44868c525881323552.pkl
+Grain library complete! Generated 15 configurations

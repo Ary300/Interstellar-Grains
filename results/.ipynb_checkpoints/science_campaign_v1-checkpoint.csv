@@ -1,0 +1,7 @@
+grain_radius_um,site_area_angstroms_sq,surface_temperature_k,gas_temperature_k,h_gas_density_cm3,sticking_probability,initial_h_coverage,uv_flux_factor,uv_stimulated_diffusion_factor,use_3d_lattice,porosity_fraction,E_phys_mean_meV,heterogeneity_E_bind_sigma_meV,uv_pulse_enabled,uv_defect_creation_rate,uv_pulse_duration,h2_formed_LH_mean,h2_formed_LH_std,h2_formed_LH_ci95,h2_formed_ER_mean,h2_formed_ER_std,h2_formed_ER_ci95,h2_formed_UV_mean,h2_formed_UV_std,h2_formed_UV_ci95,total_h2_formed_mean,total_h2_formed_std,total_h2_formed_ci95
+0.005,9,10.0,100.0,1000.0,0.3,0.0,1.0,2.0,True,0.2,45.0,5.0,False,0.5,1e-06,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+0.005,9,10.0,100.0,10000.0,0.3,0.0,1.0,2.0,True,0.2,45.0,5.0,False,0.5,1e-06,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+0.005,9,40.0,100.0,1000.0,0.3,0.0,1.0,2.0,True,0.2,45.0,5.0,False,0.5,1e-06,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+0.005,9,40.0,100.0,10000.0,0.3,0.0,1.0,2.0,True,0.2,45.0,5.0,False,0.5,1e-06,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+0.005,9,75.0,100.0,1000.0,0.3,0.0,1.0,2.0,True,0.2,45.0,5.0,False,0.5,1e-06,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0
+0.005,9,75.0,100.0,10000.0,0.3,0.0,1.0,2.0,True,0.2,45.0,5.0,False,0.5,1e-06,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0

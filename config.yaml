@@ -1,0 +1,37 @@
+output_filename: results/science_campaign_v1.csv
+raw_runs_output: results/raw_runs_quick_sweep.csv
+mrn_output_filename: results/science_campaign_v1_mrn.csv
+max_time_s: 20.0
+ensemble_runs: 3
+save_raw_runs: true
+max_steps: 50000
+parameter_sweeps:
+  surface_temperature_k:
+    - 20.0
+    - 40.0
+    - 60.0
+  h_gas_density_cm3:
+    - 2000000.0
+    - 5000000.0
+  uv_flux_factor:
+    - 0.0
+    - 5.0
+    - 10.0
+gas_temperature_k: 200.0
+sticking_probability: 0.3
+initial_h_coverage: 0.4
+use_3d_lattice: false
+porosity_fraction: 0.2
+grain_radius_um: 0.008
+site_area_angstroms_sq: 80
+E_phys_mean_meV: 45.0
+heterogeneity_E_bind_sigma_meV: 5.0
+uv_pulse_enabled: true
+uv_defect_creation_rate: 0.5
+uv_pulse_duration: 0.000001
+uv_stimulated_diffusion_factor: 3.0
+use_mrn: false
+aggregate_across_sizes: true
+mrn_min_um: 0.005
+mrn_max_um: 0.25
+mrn_bins: 20
