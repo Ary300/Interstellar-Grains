@@ -1,0 +1,18 @@
+{
+  "highT_baseline_150K": {
+    "epsilon": 0.1824
+  },
+  "highT_no_chemisorption_150K": {
+    "epsilon": 0.0
+  },
+  "lowT_blocking_off": {
+    "epsilon_10K": 0.3172,
+    "epsilon_20K": 0.31,
+    "ratio_10_over_20": 1.0232258064516129
+  },
+  "lowT_blocking_on": {
+    "epsilon_10K": 0.034,
+    "epsilon_20K": 0.0336,
+    "ratio_10_over_20": 1.011904761904762
+  }
+}

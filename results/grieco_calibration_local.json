@@ -1,0 +1,27 @@
+{
+  "stage1": {
+    "best_er_reaction_probability": 0.8,
+    "epsilon_by_T": {
+      "100.0": 0.2118,
+      "150.0": 0.20579999999999998,
+      "200.0": 0.20739999999999997,
+      "250.0": 0.2132
+    },
+    "plateau_epsilon_mean": 0.20955000000000001,
+    "target_plateau": 0.2
+  },
+  "stage2": {
+    "best_params": {
+      "E_h2_bind_eV": 0.065,
+      "er_blocking_strength": 1.0,
+      "sticking_blocking_strength": 0.5
+    },
+    "epsilon_10k": 0.08052892253060462,
+    "epsilon_20k": 0.29694937907964347,
+    "epsilon_30_80k": 0.5045658619760856,
+    "targets": {
+      "drop_ratio": 0.3,
+      "mid_target": 0.3
+    }
+  }
+}

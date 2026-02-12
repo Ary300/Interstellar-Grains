@@ -1,0 +1,2 @@
+grain_radius_um,site_area_angstroms_sq,estimated_surface_sites,plateau_T_k,plateau_epsilon_mean,plateau_epsilon_ci95,ded_start_k,ded_end_k,ded_eps10,ded_eps20,ded_eps30_80,ded_ratio10_over_20
+0.005,25.0,1256.6370614359178,150.0,0.175,0.005096000000000009,10.0,40.0,0.014835381763251854,0.13176950418059555,0.32345109005325845,0.11258585099416744

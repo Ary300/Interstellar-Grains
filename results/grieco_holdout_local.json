@@ -1,0 +1,40 @@
+{
+  "ded_holdout": {
+    "best_params": {
+      "E_h2_bind_eV": 0.06,
+      "er_blocking_strength": 1.0,
+      "sticking_blocking_strength": 1.0
+    },
+    "eps10": 0.014835381763251854,
+    "eps20": 0.13176950418059555,
+    "eps30_80": 0.3195511627467686,
+    "objective": "drop_only",
+    "ratio10_over_20": 0.11258585099416744,
+    "targets": {
+      "drop_ratio": 0.3,
+      "mid_target": 0.3
+    }
+  },
+  "plateau_holdout": {
+    "best_params": {
+      "er_cross_section_cm2": 1.5e-15,
+      "er_reaction_probability": 0.9,
+      "sticking_probability": 0.3
+    },
+    "target_plateau": 0.2,
+    "test_eps_by_T": {
+      "150.0": 0.18980000000000002,
+      "250.0": 0.191
+    },
+    "test_plateau_eps": 0.1904,
+    "test_temps_k": [
+      150.0,
+      250.0
+    ],
+    "train_plateau_eps": 0.1979,
+    "train_temps_k": [
+      100.0,
+      200.0
+    ]
+  }
+}

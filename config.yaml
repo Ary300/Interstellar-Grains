@@ -1,0 +1,99 @@
+
+#output_filename: results/science_campaign_v1.csv
+#max_time_s: 10000000.0
+#ensemble_runs: 3
+
+# 3D Lattice Parameters
+#use_3d_lattice: true
+#porosity_fraction: 0.2
+
+# Energy Parameters for Different Site Types
+#E_phys_mean_meV: 45.0  # 45 meV = ~520 K equivalent (30-60 meV range)
+
+# UV Stochastic Pulse Parameters
+#uv_pulse_enabled: true
+#uv_defect_creation_rate: 0.5  # sites/Myr
+#uv_pulse_duration: 1e-6       # s
+# UV pulse rate: 1-10 photons grain⁻¹ yr⁻¹ (workflow specification)
+
+#parameter_sweeps:
+ # surface_temperature_k:
+  #- 10.0
+  #- 20.0
+  #- 30.0
+  #h_gas_density_cm3:
+  #- 100.0
+  #- 1000.0
+  #- 10000.0
+  #uv_flux_factor:
+  #- 0.1
+  #- 1.0
+  #- 10.0
+#gas_temperature_k: 100.0
+#sticking_probability: 0.3
+#nitial_h_coverage: 0.0
+#grain_radius_um: 0.1
+#site_area_angstroms_sq: 9
+
+
+#output_filename: results/science_campaign_v1.csv
+#max_time_s: 10000000.0
+#ensemble_runs: 3
+
+# 3D Lattice Parameters
+#use_3d_lattice: true
+#porosity_fraction: 0.2
+
+# Energy Parameters for Different Site Types
+#E_phys_mean_meV: 45.0  # 45 meV = ~520 K equivalent (30-60 meV range)
+
+# UV Stochastic Pulse Parameters
+#uv_pulse_enabled: true
+#uv_defect_creation_rate: 0.5  # sites/Myr
+#uv_pulse_duration: 1e-6       # s
+# UV pulse rate: 1-10 photons grain⁻¹ yr⁻¹ (workflow specification)
+
+#parameter_sweeps:
+ # surface_temperature_k:
+  #- 10.0
+  #- 20.0
+  #- 30.0
+  #h_gas_density_cm3:
+  #- 100.0
+  #- 1000.0
+  #- 10000.0
+  #uv_flux_factor:
+  #- 0.1
+  #- 1.0
+  #- 10.0
+#gas_temperature_k: 100.0
+#sticking_probability: 0.3
+#nitial_h_coverage: 0.0
+#grain_radius_um: 0.1
+#site_area_angstroms_sq: 9
+
+output_filename: results/science_campaign_v1.csv
+raw_runs_output: results/raw_runs_quick_seed.csv
+mrn_output_filename: results/science_campaign_v1_mrn.csv
+
+max_time_s: 0.1
+ensemble_runs: 1
+save_raw_runs: false
+
+initial_h_count: 5000
+initial_h_coverage: 0.0
+
+use_3d_lattice: true
+porosity_fraction: 0.2
+grain_radius_um: 0.02
+site_area_angstroms_sq: 25
+
+gas_temperature_k: 100.0
+sticking_probability: 0.3
+
+parameter_sweeps: {}        # single condition → 20 runs total
+
+E_phys_mean_meV: 45.0
+heterogeneity_E_bind_sigma_meV: 5.0
+uv_pulse_enabled: false
+use_mrn: false

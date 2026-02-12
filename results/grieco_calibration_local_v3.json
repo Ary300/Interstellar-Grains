@@ -1,0 +1,29 @@
+{
+  "stage1": {
+    "best_er_cross_section_cm2": 1.5e-15,
+    "best_er_reaction_probability": 0.9,
+    "best_sticking_probability": 0.3,
+    "epsilon_by_T": {
+      "100.0": 0.2032,
+      "150.0": 0.1884,
+      "200.0": 0.1932,
+      "250.0": 0.1932
+    },
+    "plateau_epsilon_mean": 0.1945,
+    "target_plateau": 0.2
+  },
+  "stage2": {
+    "best_params": {
+      "E_h2_bind_eV": 0.06,
+      "er_blocking_strength": 1.0,
+      "sticking_blocking_strength": 1.0
+    },
+    "epsilon_10k": 0.014835381763251854,
+    "epsilon_20k": 0.13176950418059555,
+    "epsilon_30_80k": 0.3195511627467686,
+    "targets": {
+      "drop_ratio": 0.3,
+      "mid_target": 0.3
+    }
+  }
+}

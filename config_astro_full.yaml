@@ -1,0 +1,43 @@
+output_filename: results/astro_full.csv
+raw_runs_output: results/astro_full_raw.csv
+mrn_output_filename: results/astro_full_mrn.csv
+
+# Production settings for Anvil CPU jobs.
+max_time_s: 3.154e13            # 1 Myr
+max_steps: 5000000
+ensemble_runs: 20
+min_ensemble_runs: 20
+save_raw_runs: false
+rng_seed: 1000
+
+initial_h_count: 0
+initial_h_coverage: 0.0
+
+use_3d_lattice: true
+porosity_fraction: 0.2
+grain_radius_um: 0.02
+site_area_angstroms_sq: 25
+
+gas_temperature_k: 100.0
+sticking_probability: 0.3
+uv_pulse_enabled: true
+uv_flux_factor: 1.0
+
+E_phys_mean_meV: 45.0
+heterogeneity_E_bind_sigma_meV: 5.0
+
+# Reuse grain structures across runs.
+enable_grain_cache: true
+grain_cache_dir: grain_cache
+
+use_mrn: true
+aggregate_across_sizes: true
+mrn_min_um: 0.005
+mrn_max_um: 0.25
+mrn_bins: 12
+
+parameter_sweeps:
+  surface_temperature_k: [10.0, 20.0, 50.0, 100.0, 150.0]
+  h_gas_density_cm3: [10.0, 100.0, 1000.0, 10000.0, 100000.0]
+  uv_flux_factor: [0.0, 0.1, 1.0, 10.0, 100.0]
+

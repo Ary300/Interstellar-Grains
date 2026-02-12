@@ -1,0 +1,7 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Project-generated cache/results
+grain_cache/
+# results/

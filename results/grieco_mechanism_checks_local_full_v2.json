@@ -1,0 +1,20 @@
+{
+  "ded_blocking_off": {
+    "epsilon_10K": 0.32061579651941097,
+    "epsilon_20K": 0.32059914767960224,
+    "epsilon_30_80K": 0.325053802344553,
+    "ratio_10_over_20": 1.0000519303932316
+  },
+  "ded_blocking_on": {
+    "epsilon_10K": 0.014835381763251854,
+    "epsilon_20K": 0.13176950418059555,
+    "epsilon_30_80K": 0.3195511627467686,
+    "ratio_10_over_20": 0.11258585099416744
+  },
+  "highT_baseline_150K": {
+    "epsilon": 0.1824
+  },
+  "highT_no_chemisorption_150K": {
+    "epsilon": 0.0
+  }
+}

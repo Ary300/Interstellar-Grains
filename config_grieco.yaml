@@ -1,0 +1,27 @@
+# Qualitative verification mode inspired by Grieco et al. (Nature Astronomy, 2023).
+# This is not a full recreation of FORMOLISM/coronene microphysics; it is a
+# lightweight harness to check for nonzero H2 formation up to ~250 K via a
+# chemisorbed-H reservoir and arrival-driven ER/abstraction.
+
+mode: grieco
+
+output_filename: results/grieco_run_sweep.csv
+save_raw_runs: true
+raw_runs_output: results/grieco_run_sweep_raw.csv
+
+# Use a temperature sweep to emulate Fig. 2's high-T points (qualitatively).
+parameter_sweeps:
+  surface_temperature_k: [100, 150, 200, 250]
+
+# Beam-like arrivals: 1 atom per site per 100 s (FORMOLISM statement in main text).
+arrival_rate_per_site_s: 0.01
+
+# Burn-in to reach a quasi steady-state chemisorbed reservoir, then measure ε.
+burnin_arrivals: 2000
+measure_arrivals: 5000
+max_steps: 500000
+
+# Optional: reproducible ensemble runs (seed is offset by run_id).
+rng_seed: 1000
+ensemble_runs: 5
+

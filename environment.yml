@@ -1,0 +1,12 @@
+name: h2-kmc
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - pandas
+  - matplotlib
+  - seaborn
+  - pyyaml
+  - pytest
+  - pip

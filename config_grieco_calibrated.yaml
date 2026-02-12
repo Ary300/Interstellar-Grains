@@ -1,0 +1,43 @@
+# Calibrated "Grieco-style" verification parameters (local grid-search, Jan 26 2026).
+# See `results/grieco_calibration_local_v3.json` for the objective and outputs.
+
+mode: grieco
+
+output_filename: results/grieco_run_sweep_calibrated.csv
+save_raw_runs: true
+raw_runs_output: results/grieco_run_sweep_calibrated_raw.csv
+
+# Isothermal high-T points (paper reports ~20% plateau above 100 K).
+parameter_sweeps:
+  surface_temperature_k: [100, 150, 200, 250]
+
+# Beam-like arrivals: 1 atom per site per 100 s (FORMOLISM statement in main text).
+arrival_rate_per_site_s: 0.01
+
+# Burn-in to reach a quasi steady-state chemisorbed reservoir, then measure ε.
+burnin_arrivals: 2000
+measure_arrivals: 5000
+max_steps: 500000
+
+# Reproducible ensemble runs (seed is offset by run_id).
+rng_seed: 1000
+ensemble_runs: 5
+
+# --- Calibrated knobs ---
+
+# Stage 1 (high-T plateau)
+sticking_probability: 0.3
+er_cross_section_cm2: 1.5e-15
+er_reaction_probability: 0.9
+
+# Stage 2 (low-T blocking during DED-style ramps)
+enable_h2_blocking: true
+E_h2_bind_eV: 0.06
+h2_desorption_prefactor_s: 1.0e12
+h2_stick_transition_K: 20.0
+h2_stick_prob_lowT: 0.9
+sticking_blocking_strength: 1.0
+er_blocking_strength: 1.0
+
+# Optional: keep the undissociated beam channel off for ε (experimental subtraction analogue).
+beam_dissociation_fraction: 1.0

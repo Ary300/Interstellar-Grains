@@ -1,0 +1,20 @@
+materials:
+  carbonaceous:
+    h_physisorption_binding_energy_mev_typical: 60.0
+    h_physisorbed_amorphous_diffusion_barrier_ev_min: 0.045
+    er_cross_section_cm2: 1.7e-15
+    uv_photodesorption_yield_h_atom: 1.0e-5
+    uv_h2_formation_yield_per_pair: 1.0e-6
+    heterogeneity:
+      E_bind_sigma_meV: 5.0
+      E_diff_sigma_eV: 0.005
+
+  silicate:
+    h_physisorption_binding_energy_mev_typical: 80.0
+    h_physisorbed_amorphous_diffusion_barrier_ev_min: 0.055
+    er_cross_section_cm2: 1.5e-15
+    uv_photodesorption_yield_h_atom: 5.0e-6
+    uv_h2_formation_yield_per_pair: 5.0e-7
+    heterogeneity:
+      E_bind_sigma_meV: 8.0
+      E_diff_sigma_eV: 0.008
