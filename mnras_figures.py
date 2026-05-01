@@ -335,10 +335,10 @@ def figure_grieco_validation(
     ax1.set_ylim(0, 0.35)
     ax1.set_xlabel("Grain temperature (K)")
     ax1.set_ylabel(r"H$_2$ formation efficiency $\epsilon$")
-    ax1.legend(loc="upper right")
+    ax1.legend(loc="upper right", frameon=False)
     panel_label(ax1, "a")
     textbox(
-        ax1, 0.96, 0.13,
+        ax1, 0.96, 0.10,
         rf"$\chi^2_{{\mathrm{{red}}}} = {chi2_red:.3f}$" + "\n(100–250 K)",
         ha="right", va="bottom",
         fontsize=7,
@@ -459,6 +459,16 @@ def figure_phase_map(
         cmap="viridis", vmin=0, vmax=0.32,
         shading="gouraud",
     )
+    contour_levels = [0.05, 0.10, 0.15, 0.19, 0.25]
+    ax.contour(
+        TT,
+        NN,
+        eps_grid,
+        levels=contour_levels,
+        colors="white",
+        linewidths=0.8,
+        alpha=0.95,
+    )
     ax.set_yscale("log")
 
     cbar = fig.colorbar(im, ax=ax, pad=0.02, aspect=25)
@@ -505,9 +515,12 @@ def figure_ensemble_convergence(
     ax.axvline(production_N, color=COLORS["vermillion"],
                linestyle="--", linewidth=0.8, zorder=1)
     ax.text(
-        production_N * 1.15, ax.get_ylim()[0] + 0.02,
+        0.52, 0.93,
         f"Production ensemble\n(N = {production_N})",
+        transform=ax.transAxes,
         fontsize=7, color=COLORS["vermillion"], style="italic",
+        ha="left", va="bottom",
+        bbox=dict(facecolor="white", edgecolor="none", alpha=0.85, pad=0.2),
     )
 
     ax.set_xscale("log")

@@ -294,21 +294,7 @@ def _load_baseline() -> pd.DataFrame:
 
 
 def _load_validation_curve() -> pd.DataFrame:
-    df = pd.read_csv(ROOT / "results/grieco_validation_paper_iso_paperfit.csv").dropna(
-        subset=["surface_temperature_k", "epsilon_mean"]
-    )
-    out = pd.DataFrame(
-        {
-            "T_K": pd.to_numeric(df["surface_temperature_k"], errors="coerce"),
-            "eps_mean": pd.to_numeric(df["epsilon_mean"], errors="coerce"),
-            "eps_sem": _safe_sem(pd.to_numeric(df["epsilon_ci95"], errors="coerce")),
-        }
-    )
-    out = out.dropna().sort_values("T_K")
-    out["T_K"] = out["T_K"].astype(float)
-    out["eps_mean"] = out["eps_mean"].astype(float)
-    out["eps_sem"] = out["eps_sem"].astype(float)
-    return out
+    return _load_full_model_curve()
 
 
 def _load_digitized(method: str | None = None, combine_errors: bool = True) -> pd.DataFrame:
@@ -719,13 +705,14 @@ def make_fig02_binding(outdir: str) -> None:
         sharey=True,
         gridspec_kw={"width_ratios": [3.2, 1.4], "wspace": 0.05},
     )
-    bins = np.logspace(-2, 0.5, 41)
-    ax1.hist(phys, bins=bins, color=COLORS["blue"], alpha=0.78, edgecolor="none")
-    ax2.hist(chem, bins=bins, color=COLORS["vermillion"], alpha=0.78, edgecolor="none")
+    bins_phys = np.logspace(np.log10(1.2e-3), np.log10(8.0e-2), 28)
+    bins_chem = np.linspace(0.8, 2.5, 16)
+    ax1.hist(phys, bins=bins_phys, color=COLORS["blue"], alpha=0.78, edgecolor="none")
+    ax2.hist(chem, bins=bins_chem, color=COLORS["vermillion"], alpha=0.78, edgecolor="none")
     for ax in (ax1, ax2):
         ax.set_xscale("log")
-    ax1.set_xlim(8.0e-3, 8.0e-2)
-    ax2.set_xlim(0.8, 2.4)
+    ax1.set_xlim(1.2e-3, 8.0e-2)
+    ax2.set_xlim(0.8, 2.5)
     ax1.set_ylabel("Number of sites")
     fig.supxlabel(r"Binding energy $E_{\mathrm{bind}}$ (eV)")
     ymax = max(ax1.get_ylim()[1], ax2.get_ylim()[1])
@@ -733,7 +720,7 @@ def make_fig02_binding(outdir: str) -> None:
     for temp in (20, 100, 250):
         energy = 8.617e-5 * temp
         ax1.axvline(energy, color=COLORS["grey"], lw=0.7, ls="--")
-        x_text = max(energy * 1.08, ax1.get_xlim()[0] * 1.18)
+        x_text = max(energy * 1.05, ax1.get_xlim()[0] * 1.12)
         ax1.text(
             x_text,
             0.92 * ymax,
@@ -746,7 +733,7 @@ def make_fig02_binding(outdir: str) -> None:
             bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.25),
         )
     ax1.text(
-        1.15e-2,
+        2.2e-3,
         0.86 * ymax,
         "Physisorption\n45 +/- 5 meV",
         color=COLORS["blue"],
@@ -756,8 +743,8 @@ def make_fig02_binding(outdir: str) -> None:
         bbox=dict(fc="white", ec="none", alpha=0.9, pad=0.3),
     )
     ax2.text(
-        0.92,
-        0.12 * ymax,
+        1.05,
+        0.18 * ymax,
         "Chemisorption\n1.75 +/- 0.25 eV",
         color=COLORS["vermillion"],
         fontsize=7,
@@ -765,6 +752,8 @@ def make_fig02_binding(outdir: str) -> None:
         va="top",
         bbox=dict(fc="white", ec="none", alpha=0.9, pad=0.3),
     )
+    ax2.set_xticks([1.0, 2.0])
+    ax2.set_xticklabels([r"$10^0$", r"$2\times10^0$"])
     ax2.tick_params(labelleft=False, left=False)
     ax1.spines["right"].set_visible(False)
     ax2.spines["left"].set_visible(False)
@@ -1469,6 +1458,7 @@ def main() -> None:
 
     baseline = _load_baseline()
     validation = _load_validation_curve()
+    expt_all = _load_digitized()
     expt_iso = _load_digitized("isothermal")
     chi2_red = _compute_chi2_red(validation, expt_iso)
 
@@ -1483,7 +1473,7 @@ def main() -> None:
     generated.append("fig03_mechanism_schematic.tex")
     notes.append("Figure 3 is emitted as TikZ source for manual Inkscape/LaTeX finishing rather than as a Matplotlib plot.")
 
-    figure_grieco_validation(validation, expt_iso, chi2_red=chi2_red, outname="fig04_grieco_validation")
+    figure_grieco_validation(validation, expt_all, chi2_red=chi2_red, outname="fig04_grieco_validation")
     generated.append("fig04_grieco_validation.pdf/.png")
     # Move outputs into manuscript folder if finalize used default directory.
     for ext in (".pdf", ".png", "_grey.png"):
