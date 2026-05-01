@@ -25,10 +25,12 @@ Generated with `mnras_style.mplstyle` + `mnras_figures.py` helpers and saved und
 - `fig21_porosity_sticking.pdf/.png`
 - `fig22_timescale_map.pdf/.png`
 - `fig23_kinetic_trajectory.pdf/.png`
+- `fig24_surface_energy_map.pdf/.png`
 
 ## Notes
-- Figure 1 is rendered as an illustrative porous 3D grain consistent with the manuscript geometry parameters (radius, porosity, chemisorption fraction, defect fraction), rather than the shallow cached simulation slab used internally for kinetics.
+- Figure 1 is a hybrid setup figure: a schematic shell cutaway consistent with the manuscript geometry parameters plus a discrete slice from the actual cached grain lattice.
 - Figure 3 is emitted as TikZ source for manual Inkscape/LaTeX finishing rather than as a Matplotlib plot.
 - Figure 6 uses the available 20 K and 200 K tau-sensitivity table; the local repo does not currently contain a matching 10/20/50 K set.
 - MRN figure styling is final-form, but the local warm-regime MRN provenance still deserves a science-level recheck before submission.
+- Figure 24 is an additional support-style figure showing the top-layer site classes and binding-energy map from the actual cached grain, useful for methods or supplementary placement.
 - Figure 15 (UV suppression) was intentionally not rebuilt in this pass because the current manuscript direction is non-UV.

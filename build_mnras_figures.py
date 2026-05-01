@@ -16,7 +16,7 @@ from matplotlib.colors import ListedColormap, TwoSlopeNorm
 from matplotlib.patches import Patch
 from PIL import Image
 from scipy.interpolate import griddata
-from scipy.ndimage import binary_erosion, gaussian_filter
+from scipy.ndimage import binary_erosion, gaussian_filter, gaussian_filter1d
 
 from kmc_simulation import KineticMonteCarlo
 from mnras_figures import (
@@ -187,7 +187,7 @@ def _illustrative_grain_surface(
         center_norms = np.linalg.norm(centers, axis=1, keepdims=True)
         center_norms = np.where(center_norms == 0.0, 1.0, center_norms)
         centers /= center_norms
-        dots = np.clip(np.asarray(unit @ centers.T, dtype=float), -1.0, 1.0)
+        dots = np.clip(np.asarray(np.einsum("ij,kj->ik", unit, centers), dtype=float), -1.0, 1.0)
         ang = np.arccos(dots)
         score = np.exp(-(ang**2) / (2.0 * width**2)).sum(axis=1)
         score += 0.12 * rng.normal(size=score.shape[0])
@@ -508,7 +508,7 @@ def make_fig01_render(outdir: str) -> None:
     rot_x = np.array([[1, 0, 0], [0, np.cos(rx), -np.sin(rx)], [0, np.sin(rx), np.cos(rx)]])
     rot_y = np.array([[np.cos(ry), 0, np.sin(ry)], [0, 1, 0], [-np.sin(ry), 0, np.cos(ry)]])
     rot_z = np.array([[np.cos(rz), -np.sin(rz), 0], [np.sin(rz), np.cos(rz), 0], [0, 0, 1]])
-    proj = np.nan_to_num(np.asarray(positions, dtype=float), nan=0.0, posinf=0.0, neginf=0.0) @ (rot_z @ rot_y @ rot_x).T
+    proj = np.dot(np.nan_to_num(np.asarray(positions, dtype=float), nan=0.0, posinf=0.0, neginf=0.0), (rot_z @ rot_y @ rot_x).T)
     px, py, pz = proj[:, 0], proj[:, 1], proj[:, 2]
     bins = 180
     pad = 5.0
@@ -542,14 +542,14 @@ def make_fig01_render(outdir: str) -> None:
     ybar = float(np.quantile(py, 0.08))
     ax1.plot([x0, x1], [ybar, ybar], color=COLORS["black"], lw=1.1, solid_capstyle="butt")
     ax1.text(0.5 * (x0 + x1), ybar - 6.0, "100 A", ha="center", va="top", fontsize=6.8, color=COLORS["black"])
-    textbox(ax1, 0.03, 0.82, "schematic shell cutaway", ha="left", va="top", fontsize=6.8)
+    ax1.text(0.04, 0.88, "shell cutaway", transform=ax1.transAxes, fontsize=7, color=COLORS["grey"], ha="left", va="top", style="italic")
 
     ax2.imshow(section_map, origin="upper", interpolation="nearest", cmap=cmap, vmin=0, vmax=2, extent=extent_section, aspect="auto")
     ax2.set_xlabel("x (A)")
     ax2.set_ylabel("Depth (A)")
     ax2.set_xlim(x_coords.min() - 2.0 * spacing, x_coords.max() + 2.0 * spacing)
     ax2.set_yticks(depth_coords)
-    textbox(ax2, 0.15, 0.92, "three-row meridional slice", ha="left", va="top", fontsize=6.8)
+    ax2.text(0.15, 0.92, "three-row meridional slice", transform=ax2.transAxes, fontsize=7, color=COLORS["grey"], ha="left", va="top", style="italic", bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.2))
     panel_label(ax1, "a")
     panel_label(ax2, "b")
     handles = [
@@ -559,6 +559,60 @@ def make_fig01_render(outdir: str) -> None:
     ]
     fig.legend(handles=handles, frameon=False, loc="lower center", bbox_to_anchor=(0.5, 0.01), ncol=3, fontsize=7)
     finalize(fig, "fig01_grain_lattice", outdir=outdir)
+
+
+def make_fig24_surface_energy_map(outdir: str) -> None:
+    spacing = 5.0
+    with _grain_pickle_path().open("rb") as handle:
+        grain = pickle.load(handle)
+    lattice = np.asarray(grain["lattice"], dtype=object)
+    site_types = np.asarray(grain["site_types"], dtype=int)
+    ebind = np.asarray(grain["E_bind_eV_map"], dtype=float)
+    top_occ = lattice[0] != None
+    rows, cols = top_occ.shape
+    x_coords = (np.arange(cols, dtype=float) - 0.5 * (cols - 1)) * spacing
+    y_coords = (np.arange(rows, dtype=float) - 0.5 * (rows - 1)) * spacing
+    extent = [
+        x_coords.min() - 0.5 * spacing,
+        x_coords.max() + 0.5 * spacing,
+        y_coords.min() - 0.5 * spacing,
+        y_coords.max() + 0.5 * spacing,
+    ]
+
+    site_map = np.full((rows, cols), np.nan)
+    site_map[top_occ & (site_types[0] == 1)] = 0.0
+    site_map[top_occ & (site_types[0] == 3)] = 1.0
+    site_map[top_occ & (site_types[0] == 2)] = 2.0
+    class_cmap = ListedColormap([COLORS["light_grey"], COLORS["vermillion"], COLORS["blue"]])
+    class_cmap.set_bad(color="white", alpha=0.0)
+
+    energy_map = np.full((rows, cols), np.nan)
+    energy_map[top_occ] = ebind[0][top_occ]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_double(2.8), gridspec_kw={"wspace": 0.15})
+    ax1.imshow(site_map, origin="lower", interpolation="nearest", cmap=class_cmap, vmin=0, vmax=2, extent=extent)
+    ax1.set_aspect("equal")
+    ax1.set_xlabel("x (A)")
+    ax1.set_ylabel("y (A)")
+    panel_label(ax1, "a")
+    ax1.text(0.04, 0.96, "top-layer site classes", transform=ax1.transAxes, fontsize=7, color=COLORS["grey"], ha="left", va="top", style="italic", bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.2))
+
+    im = ax2.imshow(energy_map, origin="lower", interpolation="nearest", cmap="cividis", extent=extent)
+    ax2.set_aspect("equal")
+    ax2.set_xlabel("x (A)")
+    ax2.set_ylabel("y (A)")
+    panel_label(ax2, "b")
+    ax2.text(0.04, 0.96, r"$E_{\rm bind}$ top layer", transform=ax2.transAxes, fontsize=7, color=COLORS["grey"], ha="left", va="top", style="italic", bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.2))
+    cbar = fig.colorbar(im, ax=ax2, pad=0.02, fraction=0.046)
+    cbar.set_label(r"$E_{\rm bind}$ (eV)")
+
+    handles = [
+        Patch(facecolor=COLORS["light_grey"], edgecolor="none", label="Regular"),
+        Patch(facecolor=COLORS["vermillion"], edgecolor="none", label="Defect"),
+        Patch(facecolor=COLORS["blue"], edgecolor="none", label="Chemisorption"),
+    ]
+    ax1.legend(handles=handles, frameon=False, loc="lower left", fontsize=6.6)
+    finalize(fig, "fig24_surface_energy_map", outdir=outdir)
 
 
 def make_fig02_binding(outdir: str) -> None:
@@ -716,10 +770,13 @@ def make_fig08_mechanism_decomp(df: pd.DataFrame, outdir: str) -> None:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_double(3.0), gridspec_kw={"wspace": 0.28})
 
     sub = df[np.isclose(df["nH"], 100.0)].sort_values("T_K")
+    x_vals = sub["T_K"].to_numpy(dtype=float)
+    lh_vals = sub["lh_fraction"].fillna(0.0).to_numpy(dtype=float)
+    er_vals = sub["er_fraction"].fillna(0.0).to_numpy(dtype=float)
     ax1.stackplot(
-        sub["T_K"],
-        sub["lh_fraction"].fillna(0.0),
-        sub["er_fraction"].fillna(0.0),
+        x_vals,
+        lh_vals,
+        er_vals,
         colors=[MECH_COLOR["LH"], MECH_COLOR["ER"]],
         alpha=0.85,
         edgecolor="white",
@@ -730,16 +787,11 @@ def make_fig08_mechanism_decomp(df: pd.DataFrame, outdir: str) -> None:
     ax1.set_ylim(0, 1)
     ax1.set_xlabel("Grain temperature (K)")
     ax1.set_ylabel("Fraction of formed H$_2$")
-    ax1.legend(
-        handles=[
-            Patch(facecolor=MECH_COLOR["LH"], edgecolor="none", label="LH"),
-            Patch(facecolor=MECH_COLOR["ER"], edgecolor="none", label="ER"),
-        ],
-        frameon=False,
-        loc="upper right",
-    )
+    ax1.text(55, 0.78, "LH", color="white", fontsize=9, fontweight="bold", ha="center", va="center")
+    ax1.text(185, 0.80, "ER", color="white", fontsize=9, fontweight="bold", ha="center", va="center")
     panel_label(ax1, "a")
 
+    label_positions = {}
     for n_h in (10, 100, 1000, 10000):
         sub = df[np.isclose(df["nH"], float(n_h))].sort_values("T_K")
         mask = sub["T_K"].between(90, 150)
@@ -750,13 +802,26 @@ def make_fig08_mechanism_decomp(df: pd.DataFrame, outdir: str) -> None:
             marker=DENSITY_MARKER[n_h],
             lw=1.5,
             ms=3.8,
-            label=rf"$10^{{{int(np.log10(n_h))}}}$",
+        )
+        label_positions[n_h] = (
+            float(sub.loc[mask, "T_K"].iloc[-1]),
+            float(100.0 * sub.loc[mask, "er_fraction"].iloc[-1]),
         )
     ax2.set_xlim(90, 150)
     ax2.set_ylim(0, 100)
     ax2.set_xlabel("Grain temperature (K)")
     ax2.set_ylabel("ER fraction (%)")
-    ax2.legend(frameon=False, loc="lower right")
+    for n_h, (_, y_end) in label_positions.items():
+        ax2.text(
+            147.5,
+            y_end - (2.0 if n_h == 10 else 0.0),
+            rf"$10^{{{int(np.log10(n_h))}}}$",
+            color=DENSITY_COLOR[n_h],
+            fontsize=7,
+            ha="right",
+            va="center",
+            bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.15),
+        )
     panel_label(ax2, "b")
     finalize(fig, "fig08_mechanism_decomp", outdir=outdir)
 
@@ -1244,6 +1309,12 @@ def make_fig23_kinetic_trajectory(outdir: str) -> None:
     _, des_rate = _interp_and_rate(desorption_cum)
     _, lh_rate = _interp_and_rate(lh_cum)
     _, er_rate = _interp_and_rate(er_cum)
+    surf_smooth = gaussian_filter1d(surf_interp, sigma=2.2)
+    formed_smooth = gaussian_filter1d(formed_interp, sigma=2.2)
+    ads_smooth = gaussian_filter1d(ads_rate, sigma=2.0)
+    des_smooth = gaussian_filter1d(des_rate, sigma=2.0)
+    lh_smooth = gaussian_filter1d(lh_rate, sigma=2.0)
+    er_smooth = gaussian_filter1d(er_rate, sigma=2.0)
 
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=fig_single(3.2), sharex=True, gridspec_kw={"hspace": 0.12})
     burnin_end = burnin_end_time["value"] if burnin_end_time["value"] is not None else t_eval[len(t_eval) // 3]
@@ -1251,10 +1322,12 @@ def make_fig23_kinetic_trajectory(outdir: str) -> None:
         axis.axvspan(t_eval.min(), burnin_end, color=COLORS["light_grey"], alpha=0.25, lw=0)
         axis.axvspan(burnin_end, t_eval.max(), color="#f6f6f6", alpha=0.35, lw=0)
 
-    ax1.plot(t_eval, surf_interp, color=COLORS["blue"], lw=1.5, label="Surface H")
+    ax1.plot(t_eval, surf_interp, color=COLORS["blue"], lw=0.8, alpha=0.22)
+    ax1.plot(t_eval, surf_smooth, color=COLORS["blue"], lw=1.7, label="Surface H")
     ax1.set_ylabel(r"$N_{\rm H}$ on surface")
     ax1_t = ax1.twinx()
-    ax1_t.plot(t_eval, formed_interp, color=COLORS["vermillion"], lw=1.5, label=r"Cumulative H$_2$ formed")
+    ax1_t.plot(t_eval, formed_interp, color=COLORS["vermillion"], lw=0.8, alpha=0.18)
+    ax1_t.plot(t_eval, formed_smooth, color=COLORS["vermillion"], lw=1.7, label=r"Cumulative H$_2$ formed")
     ax1_t.set_ylabel(r"Cumulative H$_2$ formed")
     ax1.text(0.10, 0.88, "burn-in", transform=ax1.transAxes, fontsize=7, color=COLORS["grey"], style="italic")
     ax1.text(0.66, 0.88, "measured", transform=ax1.transAxes, fontsize=7, color=COLORS["grey"], style="italic")
@@ -1262,10 +1335,10 @@ def make_fig23_kinetic_trajectory(outdir: str) -> None:
 
     ax2.stackplot(
         t_eval,
-        ads_rate,
-        des_rate,
-        lh_rate,
-        er_rate,
+        ads_smooth,
+        des_smooth,
+        lh_smooth,
+        er_smooth,
         colors=[COLORS["blue"], COLORS["orange"], COLORS["purple"], COLORS["vermillion"]],
         alpha=0.82,
         labels=["Adsorption", "Desorption", "LH", "ER"],
@@ -1327,7 +1400,7 @@ def main() -> None:
 
     make_fig01_render(str(outdir))
     generated.append("fig01_grain_lattice.pdf/.png")
-    notes.append("Figure 1 is rendered as an illustrative porous 3D grain consistent with the manuscript geometry parameters (radius, porosity, chemisorption fraction, defect fraction), rather than the shallow cached simulation slab used internally for kinetics.")
+    notes.append("Figure 1 is a hybrid setup figure: a schematic shell cutaway consistent with the manuscript geometry parameters plus a discrete slice from the actual cached grain lattice.")
 
     make_fig02_binding(str(outdir))
     generated.append("fig02_binding_energies.pdf/.png")
@@ -1413,6 +1486,10 @@ def main() -> None:
 
     make_fig23_kinetic_trajectory(str(outdir))
     generated.append("fig23_kinetic_trajectory.pdf/.png")
+
+    make_fig24_surface_energy_map(str(outdir))
+    generated.append("fig24_surface_energy_map.pdf/.png")
+    notes.append("Figure 24 is an additional support-style figure showing the top-layer site classes and binding-energy map from the actual cached grain, useful for methods or supplementary placement.")
 
     notes.append("Figure 15 (UV suppression) was intentionally not rebuilt in this pass because the current manuscript direction is non-UV.")
 

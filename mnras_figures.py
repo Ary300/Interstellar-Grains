@@ -338,9 +338,10 @@ def figure_grieco_validation(
     ax1.legend(loc="upper right")
     panel_label(ax1, "a")
     textbox(
-        ax1, 0.96, 0.08,
+        ax1, 0.96, 0.13,
         rf"$\chi^2_{{\mathrm{{red}}}} = {chi2_red:.3f}$" + "\n(100–250 K)",
         ha="right", va="bottom",
+        fontsize=7,
     )
 
     # ---- Panel (b): residuals ----
@@ -384,12 +385,12 @@ def figure_epsilon_all_densities(
     setup_style()
     fig, ax = plt.subplots(figsize=fig_double(height=3.5))
 
+    label_positions = {}
     # Four density curves in canonical order
     for n_H in [10, 100, 1000, 10000]:
         sub = df[df["nH"] == n_H].sort_values("T_K")
         if len(sub) == 0:
             continue
-        label = rf"$n_{{\rm H}} = 10^{{{int(np.log10(n_H))}}}\;{{\rm cm}}^{{-3}}$"
         plot_with_ci(
             ax,
             sub["T_K"].values, sub["eps_mean"].values,
@@ -398,8 +399,8 @@ def figure_epsilon_all_densities(
             marker=DENSITY_MARKER[n_H],
             linewidth=1.5,
             markersize=4.5,
-            label=label,
         )
+        label_positions[n_H] = (float(sub["T_K"].values[-1]), float(sub["eps_mean"].values[-1]))
 
     # Analytic high-T limit
     ax.axhline(analytic_limit, xmin=0.48, xmax=1.0,
@@ -409,10 +410,28 @@ def figure_epsilon_all_densities(
     ax.set_ylim(0, 0.35)
     ax.set_xlabel("Grain surface temperature (K)")
     ax.set_ylabel(r"H$_2$ formation efficiency $\epsilon$")
-    handles, labels = ax.get_legend_handles_labels()
-    handles.append(Line2D([0], [0], color="black", lw=0.8, ls="--"))
-    labels.append(r"analytic limit")
-    ax.legend(handles, labels, loc="upper right", ncol=1, frameon=False)
+    offsets = {10: -0.004, 100: -0.0015, 1000: 0.0015, 10000: 0.004}
+    for n_H, (_, y_end) in label_positions.items():
+        ax.text(
+            252,
+            y_end + offsets[n_H],
+            rf"$10^{{{int(np.log10(n_H))}}}$",
+            color=DENSITY_COLOR[n_H],
+            fontsize=7,
+            ha="right",
+            va="center",
+            bbox=dict(facecolor="white", edgecolor="none", alpha=0.85, pad=0.15),
+        )
+    ax.text(
+        245,
+        analytic_limit + 0.004,
+        "analytic limit",
+        color=COLORS["black"],
+        fontsize=7,
+        ha="right",
+        va="bottom",
+        bbox=dict(facecolor="white", edgecolor="none", alpha=0.85, pad=0.15),
+    )
 
     finalize(fig, outname)
 
