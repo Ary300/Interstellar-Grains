@@ -385,7 +385,6 @@ def figure_epsilon_all_densities(
     setup_style()
     fig, ax = plt.subplots(figsize=fig_double(height=3.5))
 
-    label_positions = {}
     # Four density curves in canonical order
     for n_H in [10, 100, 1000, 10000]:
         sub = df[df["nH"] == n_H].sort_values("T_K")
@@ -399,8 +398,8 @@ def figure_epsilon_all_densities(
             marker=DENSITY_MARKER[n_H],
             linewidth=1.5,
             markersize=4.5,
+            label=rf"$10^{{{int(np.log10(n_H))}}}$",
         )
-        label_positions[n_H] = (float(sub["T_K"].values[-1]), float(sub["eps_mean"].values[-1]))
 
     # Analytic high-T limit
     ax.axhline(analytic_limit, xmin=0.48, xmax=1.0,
@@ -410,21 +409,18 @@ def figure_epsilon_all_densities(
     ax.set_ylim(0, 0.35)
     ax.set_xlabel("Grain surface temperature (K)")
     ax.set_ylabel(r"H$_2$ formation efficiency $\epsilon$")
-    offsets = {10: -0.005, 100: -0.0025, 1000: 0.001, 10000: 0.004}
-    for n_H, (_, y_end) in label_positions.items():
-        ax.text(
-            246,
-            y_end + offsets[n_H],
-            rf"$10^{{{int(np.log10(n_H))}}}$",
-            color=DENSITY_COLOR[n_H],
-            fontsize=7,
-            ha="right",
-            va="center",
-            bbox=dict(facecolor="white", edgecolor="none", alpha=0.85, pad=0.15),
-        )
+    ax.legend(
+        title=r"$n_{\rm H}$ (cm$^{-3}$)",
+        frameon=False,
+        loc="lower left",
+        bbox_to_anchor=(0.02, 0.03),
+        fontsize=7,
+        title_fontsize=7,
+        handlelength=2.0,
+    )
     ax.text(
-        212,
-        analytic_limit + 0.007,
+        242,
+        analytic_limit + 0.008,
         "analytic limit",
         color=COLORS["black"],
         fontsize=7,

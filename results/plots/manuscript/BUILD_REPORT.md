@@ -27,6 +27,7 @@ Generated with `mnras_style.mplstyle` + `mnras_figures.py` helpers and saved und
 - `fig23_kinetic_trajectory.pdf/.png`
 - `fig24_surface_energy_map.pdf/.png`
 - `fig25_layer_gallery.pdf/.png`
+- `fig26_pore_architecture.pdf/.png`
 
 ## Notes
 - Figure 1 is a hybrid setup figure: a schematic shell cutaway consistent with the manuscript geometry parameters plus a discrete slice from the actual cached grain lattice.
@@ -35,4 +36,5 @@ Generated with `mnras_style.mplstyle` + `mnras_figures.py` helpers and saved und
 - MRN figure styling is final-form, but the local warm-regime MRN provenance still deserves a science-level recheck before submission.
 - Figure 24 is an additional support-style figure showing the top-layer site classes and binding-energy map from the actual cached grain, useful for methods or supplementary placement.
 - Figure 25 shows how site classes are distributed across surface, mid-depth, and deep cached grain layers; it is a non-line support figure tied directly to the cached lattice.
+- Figure 26 shows pore architecture from the actual cached grain using occupied-layer count and a meridional material/void slice.
 - Figure 15 (UV suppression) was intentionally not rebuilt in this pass because the current manuscript direction is non-UV.

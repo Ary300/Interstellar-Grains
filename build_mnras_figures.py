@@ -503,6 +503,7 @@ def make_fig01_render(outdir: str) -> None:
         figsize=fig_single(3.5),
         gridspec_kw={"hspace": 0.16, "height_ratios": [1.0, 0.72]},
     )
+    fig.subplots_adjust(bottom=0.19)
 
     rx, ry, rz = np.deg2rad([25.0, -38.0, 8.0])
     rot_x = np.array([[1, 0, 0], [0, np.cos(rx), -np.sin(rx)], [0, np.sin(rx), np.cos(rx)]])
@@ -537,34 +538,19 @@ def make_fig01_render(outdir: str) -> None:
     ax1.set_yticks([])
     for spine in ax1.spines.values():
         spine.set_visible(False)
-    ax1.text(
-        0.84,
-        0.08,
-        r"radius $\approx$ 50 A",
-        transform=ax1.transAxes,
-        fontsize=7,
-        color=COLORS["grey"],
-        ha="right",
-        va="bottom",
-        style="italic",
-        bbox=dict(fc="white", ec="none", alpha=0.82, pad=0.15),
-    )
-    ax1.text(0.04, 0.88, "shell cutaway", transform=ax1.transAxes, fontsize=7, color=COLORS["grey"], ha="left", va="top", style="italic")
-
     ax2.imshow(section_map, origin="upper", interpolation="nearest", cmap=cmap, vmin=0, vmax=2, extent=extent_section, aspect="auto")
     ax2.set_xlabel("x (A)")
     ax2.set_ylabel("Depth (A)")
     ax2.set_xlim(x_coords.min() - 2.0 * spacing, x_coords.max() + 2.0 * spacing)
     ax2.set_yticks(depth_coords)
-    ax2.text(0.15, 0.92, "three-row meridional slice", transform=ax2.transAxes, fontsize=7, color=COLORS["grey"], ha="left", va="top", style="italic", bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.2))
-    panel_label(ax1, "a")
-    panel_label(ax2, "b")
+    panel_label(ax1, "a", x=0.01, y=0.985)
+    panel_label(ax2, "b", x=0.01, y=0.93)
     handles = [
         Patch(facecolor=COLORS["light_grey"], edgecolor="none", label="Regular site"),
         Patch(facecolor=COLORS["vermillion"], edgecolor="none", label="Surface defect"),
         Patch(facecolor=COLORS["blue"], edgecolor="none", label="Chemisorption site"),
     ]
-    fig.legend(handles=handles, frameon=False, loc="lower center", bbox_to_anchor=(0.5, 0.01), ncol=3, fontsize=7)
+    fig.legend(handles=handles, frameon=False, loc="lower center", bbox_to_anchor=(0.5, 0.045), ncol=3, fontsize=6.7)
     finalize(fig, "fig01_grain_lattice", outdir=outdir)
 
 
@@ -666,6 +652,55 @@ def make_fig25_layer_gallery(outdir: str) -> None:
     ]
     fig.legend(handles=handles, frameon=False, loc="lower center", bbox_to_anchor=(0.5, -0.02), ncol=3, fontsize=6.8)
     finalize(fig, "fig25_layer_gallery", outdir=outdir)
+
+
+def make_fig26_pore_architecture(outdir: str) -> None:
+    spacing = 5.0
+    with _grain_pickle_path().open("rb") as handle:
+        grain = pickle.load(handle)
+    lattice = np.asarray(grain["lattice"], dtype=object)
+    occupied = lattice != None
+    depth_layers, rows, cols = occupied.shape
+
+    occupancy_count = occupied.sum(axis=0).astype(float)
+    section = occupied[:, rows // 2, :].astype(float)
+
+    x_coords = (np.arange(cols, dtype=float) - 0.5 * (cols - 1)) * spacing
+    y_coords = (np.arange(rows, dtype=float) - 0.5 * (rows - 1)) * spacing
+    depth_coords = np.arange(depth_layers, dtype=float) * spacing
+
+    extent_top = [
+        x_coords.min() - 0.5 * spacing,
+        x_coords.max() + 0.5 * spacing,
+        y_coords.min() - 0.5 * spacing,
+        y_coords.max() + 0.5 * spacing,
+    ]
+    extent_section = [
+        x_coords.min() - 0.5 * spacing,
+        x_coords.max() + 0.5 * spacing,
+        depth_coords.max() + 0.5 * spacing,
+        depth_coords.min() - 0.5 * spacing,
+    ]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=fig_double(2.7), gridspec_kw={"wspace": 0.18})
+    im1 = ax1.imshow(occupancy_count, origin="lower", interpolation="nearest", cmap="cividis", extent=extent_top)
+    ax1.set_aspect("equal")
+    ax1.set_xlabel("x (A)")
+    ax1.set_ylabel("y (A)")
+    panel_label(ax1, "a")
+    ax1.text(0.04, 0.96, "occupied layers per column", transform=ax1.transAxes, fontsize=6.9, color=COLORS["grey"], ha="left", va="top", style="italic", bbox=dict(fc="white", ec="none", alpha=0.82, pad=0.15))
+    cbar1 = fig.colorbar(im1, ax=ax1, pad=0.02, fraction=0.046)
+    cbar1.set_label("Occupied layers")
+
+    im2 = ax2.imshow(section, origin="upper", interpolation="nearest", cmap="Greys", vmin=0, vmax=1, extent=extent_section, aspect="auto")
+    ax2.set_xlabel("x (A)")
+    ax2.set_ylabel("Depth (A)")
+    panel_label(ax2, "b")
+    ax2.text(0.04, 0.96, "meridional occupancy slice", transform=ax2.transAxes, fontsize=6.9, color=COLORS["grey"], ha="left", va="top", style="italic", bbox=dict(fc="white", ec="none", alpha=0.82, pad=0.15))
+    cbar2 = fig.colorbar(im2, ax=ax2, pad=0.02, fraction=0.046)
+    cbar2.set_ticks([0, 1])
+    cbar2.set_ticklabels(["void", "material"])
+    finalize(fig, "fig26_pore_architecture", outdir=outdir)
 
 
 def make_fig02_binding(outdir: str) -> None:
@@ -1533,6 +1568,10 @@ def main() -> None:
     make_fig25_layer_gallery(str(outdir))
     generated.append("fig25_layer_gallery.pdf/.png")
     notes.append("Figure 25 shows how site classes are distributed across surface, mid-depth, and deep cached grain layers; it is a non-line support figure tied directly to the cached lattice.")
+
+    make_fig26_pore_architecture(str(outdir))
+    generated.append("fig26_pore_architecture.pdf/.png")
+    notes.append("Figure 26 shows pore architecture from the actual cached grain using occupied-layer count and a meridional material/void slice.")
 
     notes.append("Figure 15 (UV suppression) was intentionally not rebuilt in this pass because the current manuscript direction is non-UV.")
 
