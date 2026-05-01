@@ -537,11 +537,18 @@ def make_fig01_render(outdir: str) -> None:
     ax1.set_yticks([])
     for spine in ax1.spines.values():
         spine.set_visible(False)
-    x0 = float(np.quantile(px, 0.54))
-    x1 = x0 + 100.0
-    ybar = float(np.quantile(py, 0.08))
-    ax1.plot([x0, x1], [ybar, ybar], color=COLORS["black"], lw=1.1, solid_capstyle="butt")
-    ax1.text(0.5 * (x0 + x1), ybar - 6.0, "100 A", ha="center", va="top", fontsize=6.8, color=COLORS["black"])
+    ax1.text(
+        0.84,
+        0.08,
+        r"radius $\approx$ 50 A",
+        transform=ax1.transAxes,
+        fontsize=7,
+        color=COLORS["grey"],
+        ha="right",
+        va="bottom",
+        style="italic",
+        bbox=dict(fc="white", ec="none", alpha=0.82, pad=0.15),
+    )
     ax1.text(0.04, 0.88, "shell cutaway", transform=ax1.transAxes, fontsize=7, color=COLORS["grey"], ha="left", va="top", style="italic")
 
     ax2.imshow(section_map, origin="upper", interpolation="nearest", cmap=cmap, vmin=0, vmax=2, extent=extent_section, aspect="auto")
@@ -613,6 +620,52 @@ def make_fig24_surface_energy_map(outdir: str) -> None:
     ]
     ax1.legend(handles=handles, frameon=False, loc="lower left", fontsize=6.6)
     finalize(fig, "fig24_surface_energy_map", outdir=outdir)
+
+
+def make_fig25_layer_gallery(outdir: str) -> None:
+    spacing = 5.0
+    with _grain_pickle_path().open("rb") as handle:
+        grain = pickle.load(handle)
+    lattice = np.asarray(grain["lattice"], dtype=object)
+    site_types = np.asarray(grain["site_types"], dtype=int)
+    depth_layers, rows, cols = lattice.shape
+    x_coords = (np.arange(cols, dtype=float) - 0.5 * (cols - 1)) * spacing
+    y_coords = (np.arange(rows, dtype=float) - 0.5 * (rows - 1)) * spacing
+    extent = [
+        x_coords.min() - 0.5 * spacing,
+        x_coords.max() + 0.5 * spacing,
+        y_coords.min() - 0.5 * spacing,
+        y_coords.max() + 0.5 * spacing,
+    ]
+
+    cmap = ListedColormap([COLORS["light_grey"], COLORS["vermillion"], COLORS["blue"]])
+    cmap.set_bad(color="white", alpha=0.0)
+
+    layer_indices = [0, depth_layers // 2, depth_layers - 1]
+    layer_titles = ["Surface layer", "Mid-depth layer", "Deep layer"]
+    fig, axes = plt.subplots(1, 3, figsize=fig_double(2.45), gridspec_kw={"wspace": 0.08})
+    for ax, layer, title, letter in zip(axes, layer_indices, layer_titles, ["a", "b", "c"]):
+        occ = lattice[layer] != None
+        site_map = np.full((rows, cols), np.nan)
+        site_map[occ & (site_types[layer] == 1)] = 0.0
+        site_map[occ & (site_types[layer] == 3)] = 1.0
+        site_map[occ & (site_types[layer] == 2)] = 2.0
+        ax.imshow(site_map, origin="lower", interpolation="nearest", cmap=cmap, vmin=0, vmax=2, extent=extent)
+        ax.set_aspect("equal")
+        ax.set_xlabel("x (A)")
+        if ax is axes[0]:
+            ax.set_ylabel("y (A)")
+        else:
+            ax.set_yticklabels([])
+        panel_label(ax, letter)
+        ax.text(0.04, 0.96, title, transform=ax.transAxes, fontsize=6.9, color=COLORS["grey"], ha="left", va="top", style="italic", bbox=dict(fc="white", ec="none", alpha=0.82, pad=0.15))
+    handles = [
+        Patch(facecolor=COLORS["light_grey"], edgecolor="none", label="Regular"),
+        Patch(facecolor=COLORS["vermillion"], edgecolor="none", label="Defect"),
+        Patch(facecolor=COLORS["blue"], edgecolor="none", label="Chemisorption"),
+    ]
+    fig.legend(handles=handles, frameon=False, loc="lower center", bbox_to_anchor=(0.5, -0.02), ncol=3, fontsize=6.8)
+    finalize(fig, "fig25_layer_gallery", outdir=outdir)
 
 
 def make_fig02_binding(outdir: str) -> None:
@@ -791,7 +844,6 @@ def make_fig08_mechanism_decomp(df: pd.DataFrame, outdir: str) -> None:
     ax1.text(185, 0.80, "ER", color="white", fontsize=9, fontweight="bold", ha="center", va="center")
     panel_label(ax1, "a")
 
-    label_positions = {}
     for n_h in (10, 100, 1000, 10000):
         sub = df[np.isclose(df["nH"], float(n_h))].sort_values("T_K")
         mask = sub["T_K"].between(90, 150)
@@ -802,26 +854,13 @@ def make_fig08_mechanism_decomp(df: pd.DataFrame, outdir: str) -> None:
             marker=DENSITY_MARKER[n_h],
             lw=1.5,
             ms=3.8,
-        )
-        label_positions[n_h] = (
-            float(sub.loc[mask, "T_K"].iloc[-1]),
-            float(100.0 * sub.loc[mask, "er_fraction"].iloc[-1]),
+            label=rf"$10^{{{int(np.log10(n_h))}}}$",
         )
     ax2.set_xlim(90, 150)
     ax2.set_ylim(0, 100)
     ax2.set_xlabel("Grain temperature (K)")
     ax2.set_ylabel("ER fraction (%)")
-    for n_h, (_, y_end) in label_positions.items():
-        ax2.text(
-            147.5,
-            y_end - (2.0 if n_h == 10 else 0.0),
-            rf"$10^{{{int(np.log10(n_h))}}}$",
-            color=DENSITY_COLOR[n_h],
-            fontsize=7,
-            ha="right",
-            va="center",
-            bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.15),
-        )
+    ax2.legend(frameon=False, loc="lower right", fontsize=7)
     panel_label(ax2, "b")
     finalize(fig, "fig08_mechanism_decomp", outdir=outdir)
 
@@ -1490,6 +1529,10 @@ def main() -> None:
     make_fig24_surface_energy_map(str(outdir))
     generated.append("fig24_surface_energy_map.pdf/.png")
     notes.append("Figure 24 is an additional support-style figure showing the top-layer site classes and binding-energy map from the actual cached grain, useful for methods or supplementary placement.")
+
+    make_fig25_layer_gallery(str(outdir))
+    generated.append("fig25_layer_gallery.pdf/.png")
+    notes.append("Figure 25 shows how site classes are distributed across surface, mid-depth, and deep cached grain layers; it is a non-line support figure tied directly to the cached lattice.")
 
     notes.append("Figure 15 (UV suppression) was intentionally not rebuilt in this pass because the current manuscript direction is non-UV.")
 

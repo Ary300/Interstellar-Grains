@@ -410,10 +410,10 @@ def figure_epsilon_all_densities(
     ax.set_ylim(0, 0.35)
     ax.set_xlabel("Grain surface temperature (K)")
     ax.set_ylabel(r"H$_2$ formation efficiency $\epsilon$")
-    offsets = {10: -0.004, 100: -0.0015, 1000: 0.0015, 10000: 0.004}
+    offsets = {10: -0.005, 100: -0.0025, 1000: 0.001, 10000: 0.004}
     for n_H, (_, y_end) in label_positions.items():
         ax.text(
-            252,
+            246,
             y_end + offsets[n_H],
             rf"$10^{{{int(np.log10(n_H))}}}$",
             color=DENSITY_COLOR[n_H],
@@ -423,8 +423,8 @@ def figure_epsilon_all_densities(
             bbox=dict(facecolor="white", edgecolor="none", alpha=0.85, pad=0.15),
         )
     ax.text(
-        245,
-        analytic_limit + 0.004,
+        212,
+        analytic_limit + 0.007,
         "analytic limit",
         color=COLORS["black"],
         fontsize=7,
