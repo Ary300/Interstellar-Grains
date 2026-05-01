@@ -12,7 +12,7 @@ plt.style.use("./mnras_style.mplstyle")
 import numpy as np
 import pandas as pd
 import yaml
-from matplotlib.colors import TwoSlopeNorm
+from matplotlib.colors import ListedColormap, TwoSlopeNorm
 from matplotlib.patches import Patch
 from PIL import Image
 from scipy.interpolate import griddata
@@ -180,11 +180,13 @@ def _illustrative_grain_surface(
     # Create spatially coherent site patches instead of salt-and-pepper random colors.
     norms = np.linalg.norm(positions, axis=1, keepdims=True)
     norms = np.where(norms == 0.0, 1.0, norms)
-    unit = np.asarray(positions / norms, dtype=float)
+    unit = np.nan_to_num(np.asarray(positions / norms, dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
 
     def _patch_score(n_centers: int, width: float) -> np.ndarray:
         centers = np.asarray(rng.normal(size=(n_centers, 3)), dtype=float)
-        centers /= np.linalg.norm(centers, axis=1, keepdims=True)
+        center_norms = np.linalg.norm(centers, axis=1, keepdims=True)
+        center_norms = np.where(center_norms == 0.0, 1.0, center_norms)
+        centers /= center_norms
         dots = np.clip(np.asarray(unit @ centers.T, dtype=float), -1.0, 1.0)
         ang = np.arccos(dots)
         score = np.exp(-(ang**2) / (2.0 * width**2)).sum(axis=1)
@@ -204,6 +206,7 @@ def _illustrative_grain_surface(
     site_kind = np.full(n_surface, "regular", dtype=object)
     site_kind[chem_idx] = "chem"
     site_kind[def_rank] = "defect"
+    positions = np.nan_to_num(np.asarray(positions, dtype=float), nan=0.0, posinf=0.0, neginf=0.0)
     return positions, site_kind, positions_clean
 
 
@@ -445,7 +448,8 @@ def _cleanup_legacy_outputs(outdir: Path) -> None:
 
 def make_fig01_render(outdir: str) -> None:
     params = _load_yaml_params(ROOT / "config_astro_full_paperfit.yaml")
-    positions, site_kind, positions_clean = _illustrative_grain_surface(
+    spacing = float(np.sqrt(params.get("site_area_angstroms_sq", 25.0)))
+    positions, site_kind, _ = _illustrative_grain_surface(
         grain_radius_um=float(params.get("grain_radius_um", 0.005)),
         site_area_angstroms_sq=float(params.get("site_area_angstroms_sq", 25.0)),
         porosity_fraction=float(params.get("porosity_fraction", 0.2)),
@@ -453,83 +457,99 @@ def make_fig01_render(outdir: str) -> None:
         surface_defect_fraction=float(params.get("surface_defect_fraction", 0.15)),
         rng_seed=1000,
     )
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=fig_single(4.45), gridspec_kw={"hspace": 0.08, "height_ratios": [1.25, 1.0]})
+    with _grain_pickle_path().open("rb") as handle:
+        grain = pickle.load(handle)
+
+    lattice = np.asarray(grain["lattice"], dtype=object)
+    site_types = np.asarray(grain["site_types"], dtype=int)
+    depth_layers, rows, cols = lattice.shape
+
+    x_coords = (np.arange(cols, dtype=float) - 0.5 * (cols - 1)) * spacing
+    y_coords = (np.arange(rows, dtype=float) - 0.5 * (rows - 1)) * spacing
+    depth_coords = np.arange(depth_layers, dtype=float) * spacing
+
+    top_occ = lattice[0] != None
+    row_center = int(np.argmax(top_occ.sum(axis=1)))
+    row_lo = max(0, row_center - 1)
+    row_hi = min(rows, row_center + 2)
+    section_map = np.full((depth_layers, cols), np.nan)
+    for d in range(depth_layers):
+        occ_strip = lattice[d, row_lo:row_hi, :] != None
+        type_strip = site_types[d, row_lo:row_hi, :]
+        for c in range(cols):
+            vals = type_strip[:, c][occ_strip[:, c]]
+            if vals.size == 0:
+                continue
+            counts = np.bincount(vals, minlength=4)
+            if counts[2] >= max(counts[1], counts[3]):
+                section_map[d, c] = 2.0
+            elif counts[3] >= counts[1]:
+                section_map[d, c] = 1.0
+            else:
+                section_map[d, c] = 0.0
+
+    cmap = ListedColormap([COLORS["light_grey"], COLORS["vermillion"], COLORS["blue"]])
+    cmap.set_bad(color="white", alpha=0.0)
+    extent_section = [
+        x_coords.min() - 0.5 * spacing,
+        x_coords.max() + 0.5 * spacing,
+        depth_coords.max() + 0.5 * spacing,
+        depth_coords.min() - 0.5 * spacing,
+    ]
+
+    fig, (ax1, ax2) = plt.subplots(
+        2,
+        1,
+        figsize=fig_single(3.5),
+        gridspec_kw={"hspace": 0.16, "height_ratios": [1.0, 0.72]},
+    )
+
     rx, ry, rz = np.deg2rad([25.0, -38.0, 8.0])
     rot_x = np.array([[1, 0, 0], [0, np.cos(rx), -np.sin(rx)], [0, np.sin(rx), np.cos(rx)]])
     rot_y = np.array([[np.cos(ry), 0, np.sin(ry)], [0, 1, 0], [-np.sin(ry), 0, np.cos(ry)]])
     rot_z = np.array([[np.cos(rz), -np.sin(rz), 0], [np.sin(rz), np.cos(rz), 0], [0, 0, 1]])
-    rot = rot_z @ rot_y @ rot_x
-    proj = np.asarray(positions, dtype=float) @ rot.T
-    x, y, z = proj[:, 0], proj[:, 1], proj[:, 2]
-
-    pad = 8.0
-    bins = 220
-    x_edges = np.linspace(x.min() - pad, x.max() + pad, bins)
-    y_edges = np.linspace(y.min() - pad, y.max() + pad, bins)
-    density, _, _ = np.histogram2d(x, y, bins=[x_edges, y_edges])
-    density = gaussian_filter(density.T, sigma=4.0)
+    proj = np.nan_to_num(np.asarray(positions, dtype=float), nan=0.0, posinf=0.0, neginf=0.0) @ (rot_z @ rot_y @ rot_x).T
+    px, py, pz = proj[:, 0], proj[:, 1], proj[:, 2]
+    bins = 180
+    pad = 5.0
+    x_edges = np.linspace(px.min() - pad, px.max() + pad, bins)
+    y_edges = np.linspace(py.min() - pad, py.max() + pad, bins)
+    density, _, _ = np.histogram2d(px, py, bins=[x_edges, y_edges])
+    density = gaussian_filter(density.T, sigma=3.6)
     vmax = float(np.nanmax(density)) if np.isfinite(density).any() else 1.0
-    levels = [0.10 * vmax, 0.22 * vmax, 0.40 * vmax, 0.65 * vmax, 1.01 * vmax]
+    levels = [0.12 * vmax, 0.25 * vmax, 0.45 * vmax, 0.72 * vmax, 1.01 * vmax]
     ax1.contourf(
         0.5 * (x_edges[:-1] + x_edges[1:]),
         0.5 * (y_edges[:-1] + y_edges[1:]),
         density,
         levels=levels,
-        colors=["#f3f3f3", "#e5e5e5", "#d4d4d4", "#c0c0c0"],
+        colors=["#f2f2f2", "#e4e4e4", "#d1d1d1", "#bdbdbd"],
         antialiased=True,
     )
-
-    front = z <= np.quantile(z, 0.50)
-    chem = site_kind == "chem"
-    defect = site_kind == "defect"
-    regular = site_kind == "regular"
-
-    ax1.scatter(
-        x[front & regular],
-        y[front & regular],
-        s=10,
-        c="#d9d9d9",
-        alpha=0.22,
-        linewidths=0,
-        rasterized=True,
-    )
-    ax1.scatter(
-        x[front & defect],
-        y[front & defect],
-        s=19,
-        c=COLORS["vermillion"],
-        alpha=0.80,
-        linewidths=0,
-        rasterized=True,
-    )
-    ax1.scatter(
-        x[front & chem],
-        y[front & chem],
-        s=19,
-        c=COLORS["blue"],
-        alpha=0.80,
-        linewidths=0,
-        rasterized=True,
-    )
-
+    shell_r = np.sqrt(px**2 + py**2)
+    rim = shell_r >= np.quantile(shell_r, 0.72)
+    front = pz <= np.quantile(pz, 0.58)
+    ax1.scatter(px[rim & front & (site_kind == "regular")], py[rim & front & (site_kind == "regular")], s=11, c=COLORS["light_grey"], alpha=0.9, linewidths=0, rasterized=True)
+    ax1.scatter(px[rim & front & (site_kind == "defect")], py[rim & front & (site_kind == "defect")], s=17, c=COLORS["vermillion"], alpha=0.92, linewidths=0, rasterized=True)
+    ax1.scatter(px[rim & front & (site_kind == "chem")], py[rim & front & (site_kind == "chem")], s=17, c=COLORS["blue"], alpha=0.92, linewidths=0, rasterized=True)
     ax1.set_aspect("equal")
     ax1.set_xticks([])
     ax1.set_yticks([])
     for spine in ax1.spines.values():
         spine.set_visible(False)
+    x0 = float(np.quantile(px, 0.54))
+    x1 = x0 + 100.0
+    ybar = float(np.quantile(py, 0.08))
+    ax1.plot([x0, x1], [ybar, ybar], color=COLORS["black"], lw=1.1, solid_capstyle="butt")
+    ax1.text(0.5 * (x0 + x1), ybar - 6.0, "100 A", ha="center", va="top", fontsize=6.8, color=COLORS["black"])
+    textbox(ax1, 0.03, 0.82, "schematic shell cutaway", ha="left", va="top", fontsize=6.8)
 
-    slice_mask = np.abs(positions_clean[:, 1]) <= np.percentile(np.abs(positions_clean[:, 1]), 18)
-    sx = positions_clean[slice_mask, 0]
-    sz = positions_clean[slice_mask, 2]
-    sk = site_kind[slice_mask]
-    ax2.scatter(sx[sk == "regular"], sz[sk == "regular"], s=10, c="#d9d9d9", alpha=0.45, linewidths=0, rasterized=True)
-    ax2.scatter(sx[sk == "defect"], sz[sk == "defect"], s=18, c=COLORS["vermillion"], alpha=0.85, linewidths=0, rasterized=True)
-    ax2.scatter(sx[sk == "chem"], sz[sk == "chem"], s=18, c=COLORS["blue"], alpha=0.85, linewidths=0, rasterized=True)
-    ax2.set_aspect("equal")
+    ax2.imshow(section_map, origin="upper", interpolation="nearest", cmap=cmap, vmin=0, vmax=2, extent=extent_section, aspect="auto")
     ax2.set_xlabel("x (A)")
-    ax2.set_ylabel("z (A)")
-    ax2.set_xlim(np.nanmin(sx) - 5, np.nanmax(sx) + 5)
-    ax2.set_ylim(np.nanmin(sz) - 5, np.nanmax(sz) + 5)
+    ax2.set_ylabel("Depth (A)")
+    ax2.set_xlim(x_coords.min() - 2.0 * spacing, x_coords.max() + 2.0 * spacing)
+    ax2.set_yticks(depth_coords)
+    textbox(ax2, 0.15, 0.92, "three-row meridional slice", ha="left", va="top", fontsize=6.8)
     panel_label(ax1, "a")
     panel_label(ax2, "b")
     handles = [
@@ -550,19 +570,30 @@ def make_fig02_binding(outdir: str) -> None:
     phys = ebind[site_types == 1]
     chem = ebind[site_types == 2]
 
-    fig, ax = plt.subplots(figsize=fig_single(2.5))
+    fig, (ax1, ax2) = plt.subplots(
+        1,
+        2,
+        figsize=fig_single(2.6),
+        sharey=True,
+        gridspec_kw={"width_ratios": [3.2, 1.4], "wspace": 0.05},
+    )
     bins = np.logspace(-2, 0.5, 41)
-    ax.hist(phys, bins=bins, color=COLORS["blue"], alpha=0.7, label="Physisorption (45 +/- 5 meV)")
-    ax.hist(chem, bins=bins, color=COLORS["vermillion"], alpha=0.7, label="Chemisorption (1.75 +/- 0.25 eV)")
-    ax.set_xscale("log")
-    ax.set_xlabel(r"Binding energy $E_{\mathrm{bind}}$ (eV)")
-    ax.set_ylabel("Number of sites")
-    ymax = ax.get_ylim()[1]
+    ax1.hist(phys, bins=bins, color=COLORS["blue"], alpha=0.78, edgecolor="none")
+    ax2.hist(chem, bins=bins, color=COLORS["vermillion"], alpha=0.78, edgecolor="none")
+    for ax in (ax1, ax2):
+        ax.set_xscale("log")
+    ax1.set_xlim(8.0e-3, 8.0e-2)
+    ax2.set_xlim(0.8, 2.4)
+    ax1.set_ylabel("Number of sites")
+    fig.supxlabel(r"Binding energy $E_{\mathrm{bind}}$ (eV)")
+    ymax = max(ax1.get_ylim()[1], ax2.get_ylim()[1])
+    ax1.set_ylim(0, ymax)
     for temp in (20, 100, 250):
         energy = 8.617e-5 * temp
-        ax.axvline(energy, color=COLORS["grey"], lw=0.7, ls="--")
-        ax.text(
-            energy * 1.08,
+        ax1.axvline(energy, color=COLORS["grey"], lw=0.7, ls="--")
+        x_text = max(energy * 1.08, ax1.get_xlim()[0] * 1.18)
+        ax1.text(
+            x_text,
             0.92 * ymax,
             f"{temp} K",
             rotation=90,
@@ -572,9 +603,9 @@ def make_fig02_binding(outdir: str) -> None:
             va="top",
             bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.25),
         )
-    ax.text(
-        1.2e-2,
-        0.82 * ymax,
+    ax1.text(
+        1.15e-2,
+        0.86 * ymax,
         "Physisorption\n45 +/- 5 meV",
         color=COLORS["blue"],
         fontsize=7,
@@ -582,9 +613,9 @@ def make_fig02_binding(outdir: str) -> None:
         va="top",
         bbox=dict(fc="white", ec="none", alpha=0.9, pad=0.3),
     )
-    ax.text(
-        0.32,
-        170,
+    ax2.text(
+        0.92,
+        0.12 * ymax,
         "Chemisorption\n1.75 +/- 0.25 eV",
         color=COLORS["vermillion"],
         fontsize=7,
@@ -592,6 +623,16 @@ def make_fig02_binding(outdir: str) -> None:
         va="top",
         bbox=dict(fc="white", ec="none", alpha=0.9, pad=0.3),
     )
+    ax2.tick_params(labelleft=False, left=False)
+    ax1.spines["right"].set_visible(False)
+    ax2.spines["left"].set_visible(False)
+    d = 0.012
+    kwargs = dict(transform=ax1.transAxes, color="k", clip_on=False, lw=0.7)
+    ax1.plot((1 - d, 1 + d), (-d, +d), **kwargs)
+    ax1.plot((1 - d, 1 + d), (1 - d, 1 + d), **kwargs)
+    kwargs = dict(transform=ax2.transAxes, color="k", clip_on=False, lw=0.7)
+    ax2.plot((-d, +d), (-d, +d), **kwargs)
+    ax2.plot((-d, +d), (1 - d, 1 + d), **kwargs)
     finalize(fig, "fig02_binding_energies", outdir=outdir)
 
 
@@ -649,7 +690,7 @@ def make_fig06_tau_sensitivity(outdir: str) -> None:
         if not exp_row.empty:
             y = float(exp_row["eps"].iloc[0])
             err = float(exp_row["eps_err"].iloc[0])
-            ax.axhspan(y - err, y + err, color=color, alpha=0.12, lw=0)
+            ax.axhspan(y - err, y + err, color=color, alpha=0.07, lw=0)
         plot_with_ci(
             ax,
             df["tau"],
@@ -658,14 +699,16 @@ def make_fig06_tau_sensitivity(outdir: str) -> None:
             color=color,
             marker=marker,
             linewidth=1.5,
-            label=f"{temp} K",
+            markevery=1,
         )
 
-    ax.set_xlim(0.3, 1.0)
+    ax.set_xlim(0.45, 0.95)
     ax.set_ylim(0.15, 0.32)
+    ax.set_xticks(df["tau"].to_numpy(dtype=float))
     ax.set_xlabel(r"Dissociation fraction $\tau$")
     ax.set_ylabel(r"H$_2$ formation efficiency $\epsilon$")
-    ax.legend(frameon=False, loc="upper right")
+    ax.text(0.905, float(df["eps20_isothermal_released_total_mean"].iloc[-1]), "20 K", color=COLORS["blue"], fontsize=7, ha="left", va="center", bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.2))
+    ax.text(0.905, float(df["eps200_isothermal_mean"].iloc[-1]), "200 K", color=COLORS["vermillion"], fontsize=7, ha="left", va="center", bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.2))
     finalize(fig, "fig06_tau_sensitivity", outdir=outdir)
 
 
@@ -741,36 +784,57 @@ def make_fig09_surface_h(df: pd.DataFrame, outdir: str) -> None:
 
 def make_fig10_transition_zoom(df: pd.DataFrame, outdir: str) -> None:
     fig, ax = plt.subplots(figsize=fig_single(2.8))
+    label_positions = {}
     for n_h in (10, 100, 1000, 10000):
         sub = df[np.isclose(df["nH"], float(n_h))].sort_values("T_K")
         mask = sub["T_K"].between(80, 140)
+        sub_plot = sub.loc[mask]
         plot_with_ci(
             ax,
-            sub.loc[mask, "T_K"],
-            sub.loc[mask, "eps_mean"],
-            y_err=sub.loc[mask, "eps_sem"],
+            sub_plot["T_K"],
+            sub_plot["eps_mean"],
+            y_err=sub_plot["eps_sem"],
             color=DENSITY_COLOR[n_h],
             marker=DENSITY_MARKER[n_h],
             linewidth=1.5,
             markersize=3.8,
-            label=rf"$10^{{{int(np.log10(n_h))}}}$",
         )
+        label_positions[n_h] = (float(sub_plot["T_K"].iloc[-1]), float(sub_plot["eps_mean"].iloc[-1]))
 
     low = float(df[np.isclose(df["nH"], 10.0) & np.isclose(df["T_K"], 100.0)]["eps_mean"].iloc[0])
     high = float(df[np.isclose(df["nH"], 10000.0) & np.isclose(df["T_K"], 100.0)]["eps_mean"].iloc[0])
     ax.axvline(100.0, color=COLORS["grey"], lw=0.8, ls="--")
     ax.annotate("", xy=(100.0, high), xytext=(100.0, low), arrowprops=dict(arrowstyle="<->", lw=0.9, color=COLORS["grey"]))
-    ax.text(101.7, 0.5 * (low + high), "16%", fontsize=7, color=COLORS["grey"], va="center")
+    ax.text(
+        102.0,
+        0.5 * (low + high),
+        "16%",
+        fontsize=7,
+        color=COLORS["grey"],
+        va="center",
+        bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.2),
+    )
+    for n_h, (x_end, y_end) in label_positions.items():
+        ax.text(
+            x_end + 1.6,
+            y_end,
+            rf"$10^{{{int(np.log10(n_h))}}}$",
+            color=DENSITY_COLOR[n_h],
+            fontsize=7,
+            ha="left",
+            va="center",
+            bbox=dict(fc="white", ec="none", alpha=0.9, pad=0.2),
+        )
     ax.set_xlim(80, 140)
     ax.set_ylim(0.17, 0.30)
     ax.set_xlabel("Grain temperature (K)")
     ax.set_ylabel(r"H$_2$ formation efficiency $\epsilon$")
-    ax.legend(frameon=False, loc="lower left")
     finalize(fig, "fig10_transition_zoom", outdir=outdir)
 
 
 def make_fig12_release_rate(df: pd.DataFrame, outdir: str) -> None:
     fig, ax = plt.subplots(figsize=fig_single(2.6))
+    label_positions = {}
     for n_h in (10, 100, 1000, 10000):
         sub = df[np.isclose(df["nH"], float(n_h))].sort_values("T_K")
         plot_with_ci(
@@ -782,8 +846,8 @@ def make_fig12_release_rate(df: pd.DataFrame, outdir: str) -> None:
             marker=DENSITY_MARKER[n_h],
             linewidth=1.5,
             markersize=3.8,
-            label=rf"$10^{{{int(np.log10(n_h))}}}$",
         )
+        label_positions[n_h] = (float(sub["T_K"].iloc[-1]), float(sub["rate_mean"].iloc[-1]))
     n_ref = 100.0
     sigma_h = 1.0e-21
     k_band = np.array([1.0e-17, 6.0e-17])
@@ -794,7 +858,27 @@ def make_fig12_release_rate(df: pd.DataFrame, outdir: str) -> None:
     ax.set_ylim(1e3, 1e8)
     ax.set_xlabel("Grain temperature (K)")
     ax.set_ylabel(r"$R({\rm H}_2)$ (cm$^{-2}$ s$^{-1}$)")
-    ax.legend(frameon=False, loc="upper left")
+    for n_h, (_, y_end) in label_positions.items():
+        ax.text(
+            246,
+            y_end,
+            rf"$10^{{{int(np.log10(n_h))}}}$",
+            color=DENSITY_COLOR[n_h],
+            fontsize=7,
+            ha="right",
+            va="center",
+            bbox=dict(fc="white", ec="none", alpha=0.9, pad=0.2),
+        )
+    ax.text(
+        238,
+        np.sqrt(rate_band[0] * rate_band[1]),
+        "Jura (1975)\ncanonical range",
+        color=COLORS["grey"],
+        fontsize=6.8,
+        ha="right",
+        va="center",
+        bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.2),
+    )
     finalize(fig, "fig12_release_rate", outdir=outdir)
 
 
@@ -839,11 +923,20 @@ def make_fig14_mrn(outdir: str) -> None:
         if sub.empty:
             continue
         ax1.plot(sub["grain_radius_um_mrn"], sub["epsilon_mean"], color=color, marker=marker, ms=4.0, lw=1.5, label=f"{temp} K")
+        ax1.text(
+            float(sub["grain_radius_um_mrn"].iloc[-1]) * 0.90,
+            float(sub["epsilon_mean"].iloc[-1]),
+            f"{temp} K",
+            color=color,
+            fontsize=7,
+            ha="right",
+            va="center",
+            bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.15),
+        )
     ax1.set_xscale("log")
     ax1.set_xlim(0.005, 0.25)
     ax1.set_ylim(0, 0.4)
     ax1.set_ylabel(r"Efficiency $\epsilon$")
-    ax1.legend(frameon=False, loc="lower left")
     panel_label(ax1, "a")
 
     warm = size_df[np.isclose(size_df["surface_temperature_k"], 100.0)].sort_values("grain_radius_um_mrn")
@@ -862,9 +955,10 @@ def make_fig14_mrn(outdir: str) -> None:
     single_100 = float(comp.loc[np.isclose(comp["surface_temperature_k"], 100.0), "epsilon_single"].iloc[0])
     ax2b.axhline(single_100, color=COLORS["vermillion"], lw=0.9, ls=":", label="Single-grain $\\epsilon$")
     ax2b.set_ylabel(r"Cumulative integrated $\epsilon$")
-    lines = [ax2.lines[0], ax2b.lines[0], ax2b.lines[1]]
-    labels = [line.get_label() for line in lines]
-    ax2.legend(lines, labels, frameon=False, loc="upper right", fontsize=7)
+    ax2.text(0.006, 0.0285, "baseline", color=COLORS["grey"], fontsize=6.8, ha="left", va="bottom", bbox=dict(fc="white", ec="none", alpha=0.8, pad=0.15))
+    ax2.text(0.19, float(merged["mrn_weight_area"].iloc[-1]) * 1.05, "MRN weight", color=COLORS["black"], fontsize=6.8, ha="right", va="bottom", bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.15))
+    ax2b.text(0.19, float(merged["cum_eps"].iloc[-1]) - 0.0002, r"Integrated $\epsilon$", color=COLORS["blue"], fontsize=6.8, ha="right", va="top", bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.15))
+    ax2b.text(0.19, single_100 + 0.00015, r"Single-grain $\epsilon$", color=COLORS["vermillion"], fontsize=6.8, ha="right", va="bottom", bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.15))
     panel_label(ax2, "b", y=0.88)
     finalize(fig, "fig14_mrn_integration", outdir=outdir)
 
@@ -878,19 +972,34 @@ def make_fig17_sensitivity_envelope(outdir: str) -> None:
     env = df.groupby("T_K")["k_eff"].agg(["min", "max"]).reset_index().sort_values("T_K")
 
     fig, ax = plt.subplots(figsize=fig_single(2.8))
-    ax.fill_between(env["T_K"], env["min"], env["max"], color=COLORS["blue"], alpha=0.12, lw=0)
+    ax.fill_between(env["T_K"], env["min"], env["max"], color=COLORS["blue"], alpha=0.08, lw=0)
+    ax.plot(env["T_K"], env["min"], color=COLORS["grey"], lw=0.8, alpha=0.55)
+    ax.plot(env["T_K"], env["max"], color=COLORS["grey"], lw=0.8, alpha=0.55)
+    base_curve = None
     for (f_chem, p_er), sub in df.groupby(["chemisorption_fraction", "er_reaction_probability"]):
         sub = sub.sort_values("T_K")
         is_base = np.isclose(float(f_chem), 0.4) and np.isclose(float(p_er), 0.9)
-        ax.plot(
+        line, = ax.plot(
             sub["T_K"],
             sub["k_eff"],
             color=COLORS["blue"] if is_base else COLORS["grey"],
             lw=1.8 if is_base else 0.8,
-            alpha=1.0 if is_base else 0.45,
+            alpha=1.0 if is_base else 0.28,
             zorder=3 if is_base else 1,
         )
-    textbox(ax, 0.08, 0.08, r"baseline: $f_{\rm chem}=0.4$, $P_{\rm ER}=0.9$", ha="left", va="bottom", fontsize=7)
+        if is_base:
+            base_curve = (sub["T_K"].to_numpy(dtype=float), sub["k_eff"].to_numpy(dtype=float))
+    if base_curve is not None:
+        ax.text(
+            base_curve[0][-1] - 2.5,
+            base_curve[1][-1] * 1.03,
+            "baseline",
+            color=COLORS["blue"],
+            fontsize=7,
+            ha="right",
+            va="bottom",
+            bbox=dict(fc="white", ec="none", alpha=0.85, pad=0.15),
+        )
     ax.set_yscale("log")
     ax.set_xlabel("Grain temperature (K)")
     ax.set_ylabel(r"Effective $k_{\rm eff}$ (cm$^3$ s$^{-1}$)")
