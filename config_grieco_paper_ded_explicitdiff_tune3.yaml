@@ -1,0 +1,47 @@
+# DED paper-matching attempt: explicit diffusion + LH pairs, with stronger H2 binding
+# to shift formed-H2 desorption toward ~20 K (TPDED-style signal).
+
+grain_radius_um: 0.005
+site_area_angstroms_sq: 25
+use_3d_lattice: true
+porosity_fraction: 0.0
+
+chemisorption_fraction: 0.40
+surface_defect_fraction: 0.15
+
+E_phys_mean_meV: 45.0
+heterogeneity_E_bind_sigma_meV: 5.0
+E_chem_mean_eV: 1.75
+heterogeneity_E_chem_sigma_eV: 0.25
+
+beam_flux_total_cm2_s: 7.46e12
+beam_incidence_angle_deg: 40.0
+beam_dissociation_fraction: 0.7
+
+burnin_exposure_atoms_cm2: 0.0
+
+sticking_probability: 0.5
+sticking_temp_model: constant
+er_cross_section_cm2: 1.1e-15
+er_reaction_probability: 0.9
+
+enable_LH: true
+enable_diffusion: true
+diffusion_mode: explicit
+diffusion_rate_cap_s: 200.0
+lh_formation_mode: pairs
+
+lh_exclude_chemisorption: false
+enable_chemisorption_diffusion: false
+
+enable_h2_blocking: true
+E_h2_bind_eV: 0.05
+h2_desorption_prefactor_s: 1.0e12
+h2_stick_transition_K: 20.0
+h2_stick_prob_lowT: 0.5
+sticking_blocking_strength: 1.0
+er_blocking_strength: 1.0
+h2_beam_stick_probability: 1.0
+
+uv_flux_factor: 0.0
+uv_pulse_enabled: false

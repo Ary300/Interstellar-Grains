@@ -1,0 +1,63 @@
+# mnras_style.mplstyle — load with plt.style.use('./mnras_style.mplstyle')
+# Produces publication-quality MNRAS-compliant figures.
+
+# --- Fonts ---
+font.family         : serif
+font.serif          : Times New Roman, DejaVu Serif, Liberation Serif
+font.size           : 8.0
+axes.labelsize      : 9.0
+axes.titlesize      : 9.0
+xtick.labelsize     : 8.0
+ytick.labelsize     : 8.0
+legend.fontsize     : 7.5
+legend.frameon      : False
+legend.handlelength : 1.8
+legend.borderpad    : 0.3
+legend.labelspacing : 0.3
+mathtext.fontset    : cm
+text.usetex         : False
+
+# --- Lines & markers ---
+lines.linewidth     : 1.3
+lines.markersize    : 4.0
+lines.markeredgewidth: 0.8
+
+# --- Axes ---
+axes.linewidth      : 0.7
+axes.edgecolor      : black
+axes.labelpad       : 3.0
+axes.spines.top     : True
+axes.spines.right   : True
+axes.grid           : False
+
+# --- Ticks: inward, on ALL four sides, with minor ticks visible ---
+xtick.direction     : in
+ytick.direction     : in
+xtick.top           : True
+ytick.right         : True
+xtick.major.size    : 3.5
+ytick.major.size    : 3.5
+xtick.minor.size    : 2.0
+ytick.minor.size    : 2.0
+xtick.major.width   : 0.7
+ytick.major.width   : 0.7
+xtick.minor.width   : 0.5
+ytick.minor.width   : 0.5
+xtick.minor.visible : True
+ytick.minor.visible : True
+xtick.major.pad     : 3
+ytick.major.pad     : 3
+
+# --- Save ---
+savefig.dpi         : 300
+savefig.bbox        : tight
+savefig.pad_inches  : 0.03
+pdf.fonttype        : 42
+ps.fonttype         : 42
+
+# --- Color cycle: Okabe–Ito ---
+axes.prop_cycle     : cycler('color', ['0072B2', 'D55E00', '009E73', 'CC79A7', 'F0E442', '56B4E9', 'E69F00', '000000'])
+
+# --- Figure defaults (overridden per-figure) ---
+figure.dpi          : 100
+figure.constrained_layout.use : False

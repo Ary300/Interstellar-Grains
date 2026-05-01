@@ -1,0 +1,32 @@
+grain_radius_um: 0.005
+site_area_angstroms_sq: 25
+use_3d_lattice: true
+porosity_fraction: 0.0
+
+# Tuned to target ~20% ε plateau (paper Fig. 2, >100 K band).
+chemisorption_fraction: 0.40
+surface_defect_fraction: 0.15
+
+E_phys_mean_meV: 45.0
+heterogeneity_E_bind_sigma_meV: 5.0
+E_chem_mean_eV: 1.75
+heterogeneity_E_chem_sigma_eV: 0.25
+
+beam_flux_total_cm2_s: 7.46e12
+beam_incidence_angle_deg: 40.0
+beam_dissociation_fraction: 0.7
+
+burnin_exposure_atoms_cm2: 3.0e15
+measure_exposure_atoms_cm2: 1.5e15
+
+sticking_probability: 0.5
+sticking_temp_model: constant
+er_cross_section_cm2: 1.1e-15
+er_reaction_probability: 0.9
+
+enable_LH: false
+enable_diffusion: false
+enable_h2_blocking: false
+uv_flux_factor: 0.0
+uv_pulse_enabled: false
+

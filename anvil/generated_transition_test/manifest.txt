@@ -1,0 +1,4 @@
+anvil/generated_transition_test/config_shard_0000.yaml
+anvil/generated_transition_test/config_shard_0001.yaml
+anvil/generated_transition_test/config_shard_0002.yaml
+anvil/generated_transition_test/config_shard_0003.yaml

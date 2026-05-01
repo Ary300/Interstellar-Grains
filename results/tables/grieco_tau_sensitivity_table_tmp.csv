@@ -1,0 +1,3 @@
+tau,eps20_isothermal_released_total_mean,eps20_isothermal_released_total_ci95,eps200_isothermal_mean,eps200_isothermal_ci95,iso_temp_k,iso_replicates,iso_burnin_arrivals,iso_measure_arrivals,iso_use_exposure_stops,lowT_temp_k,lowT_replicates,lowT_burnin_arrivals,lowT_measure_arrivals,lowT_fast_diffusion
+0.5,0.2853870114041551,0.018469689580960253,0.19142359599477582,0.003446288578872717,200.0,10,2000,5000,True,20.0,10,500,1500,True
+0.9,0.2988978762816824,0.00892245978184222,0.19220722681758817,0.004122257951317216,200.0,10,2000,5000,True,20.0,10,500,1500,True

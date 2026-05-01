@@ -12,6 +12,7 @@ try:
 except ImportError:  # pragma: no cover
     pd = None
 from kmc_simulation import KineticMonteCarlo
+from scientific_data import K_B_ERG, M_H
 
 def _ensure_numeric(d: Dict[str, Any]) -> Dict[str, Any]:
     out = {}
@@ -77,6 +78,44 @@ def _write_csv(path: str, rows: List[Dict[str, Any]]) -> None:
         writer.writeheader()
         writer.writerows(rows)
 
+def _apply_arrival_rate_mode(sim_params: Dict[str, Any], config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Populate explicit arrival knobs from higher-level sweep intent.
+
+    In particular, `arrival_rate_mode: gas_kinetic` should compute an
+    `arrival_rate_per_site_s` from gas density, thermal velocity, and site area.
+    This keeps the KMC on the arrival/impingement path used by the ISM campaigns,
+    rather than silently falling back to the adsorption-only path.
+    """
+    arm = str(
+        sim_params.get("arrival_rate_mode",
+                       config.get("arrival_rate_mode", ""))
+    ).strip().lower()
+
+    if arm != "gas_kinetic":
+        return sim_params
+
+    existing = sim_params.get("arrival_rate_per_site_s", None)
+    try:
+        if existing is not None and float(existing) > 0.0:
+            return sim_params
+    except (TypeError, ValueError):
+        pass
+
+    n_h = float(sim_params.get("h_gas_density_cm3", 0.0) or 0.0)
+    t_gas = float(sim_params.get("gas_temperature_k", 100.0) or 100.0)
+    site_area_ang2 = float(sim_params.get("site_area_angstroms_sq", 25.0) or 25.0)
+    site_area_cm2 = site_area_ang2 * 1e-16
+
+    if n_h <= 0.0 or t_gas <= 0.0 or site_area_cm2 <= 0.0:
+        return sim_params
+
+    v_th = math.sqrt(8.0 * float(K_B_ERG) * float(t_gas) / (math.pi * float(M_H)))
+    flux_cm2_s = 0.25 * float(n_h) * float(v_th)
+    sim_params["arrival_rate_per_site_s"] = float(flux_cm2_s) * float(site_area_cm2)
+    sim_params["arrival_rate_mode"] = "gas_kinetic"
+    return sim_params
+
 def run_sweep(config_file="config.yaml"):
     with open(config_file, "r") as f:
         config = yaml.safe_load(f)
@@ -108,6 +147,12 @@ def run_sweep(config_file="config.yaml"):
         "initial_h_coverage": config.get("initial_h_coverage", 0.0),
         "initial_h_chemisorption_only": config.get("initial_h_chemisorption_only", None),
         "uv_flux_factor": config.get("uv_flux_factor", 0.0 if grieco_mode else 1.0),
+        "uv_mode": config.get("uv_mode", "pulse"),
+        "uv_h2_mode": config.get("uv_h2_mode", None),
+        "uv_photofrag_min_chemisorbed_h": config.get("uv_photofrag_min_chemisorbed_h", None),
+        "uv_photofrag_h_per_event": config.get("uv_photofrag_h_per_event", None),
+        "uv_photofrag_cross_section_cm2": config.get("uv_photofrag_cross_section_cm2", None),
+        "uv_photofrag_branching_ratio": config.get("uv_photofrag_branching_ratio", None),
         "uv_stimulated_diffusion_factor": config.get("uv_stimulated_diffusion_factor", 2.0),
         "enable_LH": config.get("enable_LH", False if grieco_mode else None),
         "enable_diffusion": config.get("enable_diffusion", False if grieco_mode else None),
@@ -127,12 +172,19 @@ def run_sweep(config_file="config.yaml"):
         "uv_pulse_enabled": config.get("uv_pulse_enabled", False if grieco_mode else True),
         "uv_defect_creation_rate": config.get("uv_defect_creation_rate", 0.5),
         "uv_pulse_duration": config.get("uv_pulse_duration", 1e-6),
+        "uv_pulse_start_rate_s": config.get("uv_pulse_start_rate_s", None),
         # Experiment/beam-style arrivals
         "arrival_rate_s": config.get("arrival_rate_s", None),
         "arrival_rate_per_site_s": config.get("arrival_rate_per_site_s", 0.01 if grieco_mode else None),
         "max_arrivals": config.get("max_arrivals", None),
         "er_cross_section_cm2": config.get("er_cross_section_cm2", 1e-15 if grieco_mode else None),
         "er_reaction_probability": config.get("er_reaction_probability", 0.5 if grieco_mode else None),
+        "diffusion_mode": config.get("diffusion_mode", None),
+        "diffusion_rate_cap_s": config.get("diffusion_rate_cap_s", None),
+        "lh_formation_mode": config.get("lh_formation_mode", None),
+        "lh_exclude_chemisorption": config.get("lh_exclude_chemisorption", None),
+        "enable_chemisorption_diffusion": config.get("enable_chemisorption_diffusion", None),
+        "lh_diffusion_factor": config.get("lh_diffusion_factor", None),
         # Low-T protocol pieces (optional)
         "enable_h2_blocking": config.get("enable_h2_blocking", None),
         "E_h2_bind_eV": config.get("E_h2_bind_eV", None),
@@ -234,11 +286,25 @@ def run_sweep(config_file="config.yaml"):
         epsilon = 0.0
         if getattr(kmc_sim, "total_impinging_h_atoms", 0) > 0:
             epsilon = float(2.0 * kmc_sim.h2_molecules_desorbed / kmc_sim.total_impinging_h_atoms)
+
+        surface_area_cm2 = (
+            float(sim_params.get("site_area_angstroms_sq", 25.0) or 25.0)
+            * 1e-16
+            * float(getattr(kmc_sim, "total_accessible_surface_sites", 0) or 0)
+        )
+        h2_release_rate_cm2_s = 0.0
+        if float(kmc_sim.time) > 0.0 and surface_area_cm2 > 0.0:
+            h2_release_rate_cm2_s = float(kmc_sim.h2_molecules_desorbed) / (float(kmc_sim.time) * float(surface_area_cm2))
+        final_h_atoms_on_surface = int(kmc_sim.h_atoms_on_surface)
+        final_h_surface_coverage = 0.0
+        if float(getattr(kmc_sim, "total_accessible_surface_sites", 0) or 0) > 0.0:
+            final_h_surface_coverage = float(final_h_atoms_on_surface) / float(kmc_sim.total_accessible_surface_sites)
         return {
             **sim_params,
             "run_id": run_id,
             "final_time": kmc_sim.time,
-            "final_h_atoms_on_surface": kmc_sim.h_atoms_on_surface,
+            "final_h_atoms_on_surface": final_h_atoms_on_surface,
+            "final_h_surface_coverage": final_h_surface_coverage,
             "h2_formed_LH": kmc_sim.h2_molecules_formed_LH,
             "h2_formed_ER": kmc_sim.h2_molecules_formed_ER,
             "h2_formed_UV": kmc_sim.h2_molecules_formed_UV,
@@ -254,9 +320,13 @@ def run_sweep(config_file="config.yaml"):
             "impinging_h_atoms": getattr(kmc_sim, "total_impinging_h_atoms", 0),
             "impinging_h2_molecules": getattr(kmc_sim, "total_impinging_h2_molecules", 0),
             "epsilon": epsilon,
+            "h2_release_rate_cm2_s": h2_release_rate_cm2_s,
         }
 
     metrics = [
+        "final_time",
+        "final_h_atoms_on_surface",
+        "final_h_surface_coverage",
         "h2_formed_LH",
         "h2_formed_ER",
         "h2_formed_UV",
@@ -272,8 +342,9 @@ def run_sweep(config_file="config.yaml"):
         "epsilon",
         "impinging_h_atoms",
         "impinging_h2_molecules",
+        "h2_release_rate_cm2_s",
     ]
-    exclude_descriptor_keys = ["run_id", "final_time", "final_h_atoms_on_surface", *metrics]
+    exclude_descriptor_keys = ["run_id", *metrics]
 
     if explicit_conditions:
         for i, condition in enumerate(explicit_conditions):
@@ -284,6 +355,7 @@ def run_sweep(config_file="config.yaml"):
                     sim_params = base_params.copy()
                     sim_params.update(current_sweep_params)
                     sim_params = _ensure_numeric(sim_params)
+                    sim_params = _apply_arrival_rate_mode(sim_params, config)
                     result = run_one_condition(sim_params, run_id)
                     rows.append(result)
                     if raw_runs_enabled:
@@ -301,6 +373,7 @@ def run_sweep(config_file="config.yaml"):
                         sim_params.update(current_sweep_params)
                         sim_params["grain_radius_um"] = float(a_um)
                         sim_params = _ensure_numeric(sim_params)
+                        sim_params = _apply_arrival_rate_mode(sim_params, config)
                         result = run_one_condition(sim_params, run_id)
                         rows.append(result)
                         if raw_runs_enabled:
@@ -322,6 +395,7 @@ def run_sweep(config_file="config.yaml"):
             rows = []
             for run_id in range(ensemble_runs):
                 sim_params = _ensure_numeric(base_params.copy())
+                sim_params = _apply_arrival_rate_mode(sim_params, config)
                 result = run_one_condition(sim_params, run_id)
                 rows.append(result)
                 if raw_runs_enabled:
@@ -336,6 +410,7 @@ def run_sweep(config_file="config.yaml"):
                 rows = []
                 for run_id in range(ensemble_runs):
                     sim_params = _ensure_numeric({**base_params, "grain_radius_um": float(a_um)})
+                    sim_params = _apply_arrival_rate_mode(sim_params, config)
                     result = run_one_condition(sim_params, run_id)
                     rows.append(result)
                     if raw_runs_enabled:
@@ -362,6 +437,7 @@ def run_sweep(config_file="config.yaml"):
                     sim_params = base_params.copy()
                     sim_params.update(current_sweep_params)
                     sim_params = _ensure_numeric(sim_params)
+                    sim_params = _apply_arrival_rate_mode(sim_params, config)
                     result = run_one_condition(sim_params, run_id)
                     rows.append(result)
                     if raw_runs_enabled:
@@ -379,6 +455,7 @@ def run_sweep(config_file="config.yaml"):
                         sim_params.update(current_sweep_params)
                         sim_params["grain_radius_um"] = float(a_um)
                         sim_params = _ensure_numeric(sim_params)
+                        sim_params = _apply_arrival_rate_mode(sim_params, config)
                         result = run_one_condition(sim_params, run_id)
                         rows.append(result)
                         if raw_runs_enabled:

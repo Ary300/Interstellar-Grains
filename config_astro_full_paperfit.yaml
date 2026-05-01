@@ -1,0 +1,102 @@
+# Astrophysical (ISM) sweep using the Grieco-paperfit microphysics.
+#
+# Key differences vs. lab/beam validation configs:
+# - No directed beam parameters. We derive an *isotropic* impingement rate from gas kinetics:
+#     arrival_rate_mode: gas_kinetic
+#   This makes `run_sweep.py` compute `arrival_rate_per_site_s` from (n_H, T_gas, site_area),
+#   so the simulation runs in arrival-mode (impingements + sticking + ER-on-arrival) but with ISM inputs.
+#
+# Outputs to focus on in ISM mode:
+# - `h2_release_rate_cm2_s_mean` (molecules cm^-2 s^-1, formed→gas; prompt + delayed release)
+# - mechanism means: `h2_formed_LH_mean`, `h2_formed_ER_mean`, `h2_formed_UV_mean`
+#
+# NOTE: `epsilon` is a lab-style efficiency normalized by impinging atoms; in ISM studies you typically
+#       report formation rates, not ε.
+
+output_filename: results/astro_full_paperfit.csv
+raw_runs_output: results/astro_full_paperfit_raw.csv
+mrn_output_filename: results/astro_full_paperfit_mrn.csv
+
+# Production settings (HPC recommended).
+#
+# IMPORTANT (performance/physics): In ISM conditions, surface diffusion can be orders of magnitude
+# faster than gas arrivals. Simulating every diffusion hop explicitly makes Gillespie time-steps
+# extremely small (diffusion dominates the total rate), so you hit `max_steps` long before you reach
+# meaningful physical times. To keep runs tractable, this config uses:
+#   diffusion_mode: rate_only
+#   lh_formation_mode: diffusion_limited
+# which treats LH formation as diffusion-limited without explicit diffusion micro-events.
+#
+# Statistical knobs:
+# - `burnin_arrivals` + `measure_arrivals` control per-run work in arrival-mode (recommended for ISM).
+# - `ensemble_runs` controls how many independent realizations per condition.
+#
+max_time_s: 3.154e13            # 1 Myr (not usually reached when arrival-limited)
+max_steps: 2000000
+burnin_arrivals: 5000
+measure_arrivals: 20000
+ensemble_runs: 20
+min_ensemble_runs: 20
+save_raw_runs: false
+rng_seed: 1000
+
+arrival_rate_mode: gas_kinetic
+
+initial_h_count: 0
+initial_h_coverage: 0.0
+
+use_3d_lattice: true
+porosity_fraction: 0.2
+grain_radius_um: 0.005
+site_area_angstroms_sq: 25
+
+# ISM gas inputs (arrival rate derived from n_H and T_gas)
+gas_temperature_k: 100.0
+sticking_probability: 0.5
+sticking_temp_model: constant
+beam_dissociation_fraction: 1.0   # all arrivals are atoms in ISM mode
+
+# Grieco-paperfit microphysics (validated against Fig. 2 regimes)
+chemisorption_fraction: 0.40
+surface_defect_fraction: 0.15
+E_phys_mean_meV: 45.0
+heterogeneity_E_bind_sigma_meV: 5.0
+E_chem_mean_eV: 1.75
+heterogeneity_E_chem_sigma_eV: 0.25
+
+er_cross_section_cm2: 1.1e-15
+er_reaction_probability: 0.9
+
+enable_LH: true
+enable_diffusion: true
+diffusion_mode: rate_only
+diffusion_rate_cap_s: 200.0
+lh_formation_mode: diffusion_limited
+lh_exclude_chemisorption: false
+enable_chemisorption_diffusion: false
+
+enable_h2_blocking: true
+E_h2_bind_eV: 0.051
+h2_desorption_prefactor_s: 1.0e12
+h2_stick_transition_K: 20.0
+h2_stick_prob_lowT: 0.45
+sticking_blocking_strength: 1.0
+er_blocking_strength: 1.0
+h2_beam_stick_probability: 1.0
+
+# UV: for ISM conditions use a continuous field, not microsecond pulses.
+uv_mode: continuous
+uv_pulse_enabled: false
+uv_flux_factor: 1.0
+
+# Reuse grain structures across runs.
+enable_grain_cache: true
+grain_cache_dir: grain_cache
+
+# Start with a single-grain model (fastest). Turn on MRN later if needed.
+use_mrn: false
+
+parameter_sweeps:
+  surface_temperature_k: [10.0, 20.0, 30.0, 40.0, 50.0, 60.0, 70.0, 80.0, 100.0, 120.0, 150.0, 180.0, 200.0, 220.0, 250.0]
+  h_gas_density_cm3: [10.0, 100.0, 1000.0, 10000.0]
+  uv_flux_factor: [0.0, 1.0, 10.0, 100.0]

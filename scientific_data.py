@@ -57,6 +57,11 @@ UV_PARAMS = {
     "absorption_cross_section_cm2": 1e-17,  # Typical for H atoms on surfaces
     "photodesorption_yield": 0.1,           # 10% yield per absorbed photon
     "photodissociation_yield": 1e-6,        # Very low for H2
+    "photofragmentation_yield": 1e-4,       # Legacy exploratory yield
+    "pah_absorption_cross_section_cm2": 2.4e-16,  # ~24 C atoms × 1e-17 cm^2/C
+    "photofragmentation_branching_ratio": 0.2,    # Exploratory H2-loss branching fraction
+    "photofragmentation_min_chemisorbed_h": 2,    # Need at least two chemisorbed H atoms
+    "photofragmentation_h_per_event": 2.0,        # Two chemisorbed H consumed per H2 ejection
 }
 
 # Surface chemistry data (existing)

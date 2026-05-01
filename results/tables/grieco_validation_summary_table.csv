@@ -1,0 +1,12 @@
+metric,value,note
+highT_plateau_mean_100_250K,0.19057999999999994,target ~0.20
+highT_min,0.18884,"across 100,150,200,250 K"
+highT_max,0.1947999999999999,"across 100,150,200,250 K"
+ded_eps10_mean,0.033001358644708136,target sharp drop at 10 K
+ded_eps20_mean,0.11668340283048326,reference around 20 K
+ded_eps30_80_mean,0.3223675715294028,target ~0.30
+ded_ratio10_over_20_mean,0.28491354076339837,target <~0.3
+ablation_no_chemisorption_eps150,0.0,should collapse
+ablation_blocking_off_ratio10_20,1.0000519303932316,should approach ~1
+holdout_train_plateau,0.1979,"fit on 100,200 K"
+holdout_test_plateau,0.1904,"predict 150,250 K"

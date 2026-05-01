@@ -1,0 +1,49 @@
+# Paper-matching (isothermal) parameter template for Grieco et al. 2023 ε(T) plateau.
+#
+# Use with:
+#   python grieco_validation.py --base-config config_grieco_paper_iso.yaml --output results/grieco_validation_paperfit.csv
+#
+# Notes:
+# - This is an *effective* model of the protocol, not a full FORMOLISM recreation.
+# - Explicit beam parameters (recommended for paper-matching):
+#   - `beam_incidence_angle_deg: 40.0` (paper statement)
+#   - `beam_dissociation_fraction: 0.7` (typical; paper measures it each run)
+#   - `beam_flux_total_cm2_s` chosen so that atomic landings are ~1 per site per 100 s.
+
+grain_radius_um: 0.005
+site_area_angstroms_sq: 25
+use_3d_lattice: true
+porosity_fraction: 0.0
+
+# Surface site populations (tunable)
+chemisorption_fraction: 0.35
+surface_defect_fraction: 0.15
+
+# Energetics (paper-referenced physisorption binding)
+E_phys_mean_meV: 45.0
+heterogeneity_E_bind_sigma_meV: 5.0
+E_chem_mean_eV: 1.75
+heterogeneity_E_chem_sigma_eV: 0.25
+
+# Beam-like arrivals (flux + angle)
+# With site_area=25 Å², tau=0.7, angle=40° this gives ~0.01 atoms/site/s.
+beam_flux_total_cm2_s: 7.46e12
+beam_incidence_angle_deg: 40.0
+beam_dissociation_fraction: 0.7
+
+# Optional exposure stops (atoms/cm²). If set, `grieco_validation.py` can use these.
+burnin_exposure_atoms_cm2: 3.0e15
+measure_exposure_atoms_cm2: 1.5e15
+
+# Effective sticking + ER knobs (tune via calibrate_grieco.py)
+sticking_probability: 0.5
+sticking_temp_model: constant
+er_cross_section_cm2: 1.0e-15
+er_reaction_probability: 0.9
+
+# High-T plateau: disable low-T processes
+enable_LH: false
+enable_diffusion: false
+enable_h2_blocking: false
+uv_flux_factor: 0.0
+uv_pulse_enabled: false

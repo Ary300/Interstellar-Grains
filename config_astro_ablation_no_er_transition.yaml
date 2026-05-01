@@ -1,0 +1,82 @@
+# Ablation: ER disabled (sigma=0, p=0) to isolate LH/chemisorption-driven formation.
+#
+# Goal: explain why CT02 > KMC in the 80–150 K transition band by removing ER-on-arrival.
+#
+# Usage (single-process):
+#   python run_sweep.py config_astro_ablation_no_er_transition.yaml
+#
+# Usage (parallel shards, recommended):
+#   python anvil/generate_combo_configs.py --base-config config_astro_ablation_no_er_transition.yaml --shards 12 --out-dir anvil/generated_ablation_no_er --manifest anvil/generated_ablation_no_er/manifest.txt --metadata-csv anvil/generated_ablation_no_er/metadata.csv --results-dir results/ablation_no_er
+#   cat anvil/generated_ablation_no_er/manifest.txt | xargs -n 1 -P 12 -I{} bash -lc 'python run_sweep.py \"$1\"' _ {}
+#   python anvil/merge_results.py --input-glob 'results/ablation_no_er/aggregated_shard_*.csv' --output results/astro_ablation_no_er_transition_merged.csv
+#
+output_filename: results/astro_ablation_no_er_transition.csv
+raw_runs_output: results/astro_ablation_no_er_transition_raw.csv
+
+max_time_s: 3.154e13
+max_steps: 2000000
+burnin_arrivals: 5000
+measure_arrivals: 20000
+
+ensemble_runs: 200
+min_ensemble_runs: 200
+save_raw_runs: false
+rng_seed: 3000
+
+arrival_rate_mode: gas_kinetic
+
+initial_h_count: 0
+initial_h_coverage: 0.0
+
+use_3d_lattice: true
+porosity_fraction: 0.2
+grain_radius_um: 0.005
+site_area_angstroms_sq: 25
+
+gas_temperature_k: 100.0
+sticking_probability: 0.5
+sticking_temp_model: constant
+beam_dissociation_fraction: 1.0
+
+# Grieco-paperfit microphysics
+chemisorption_fraction: 0.40
+surface_defect_fraction: 0.15
+E_phys_mean_meV: 45.0
+heterogeneity_E_bind_sigma_meV: 5.0
+E_chem_mean_eV: 1.75
+heterogeneity_E_chem_sigma_eV: 0.25
+
+# ER disabled (ablation)
+er_cross_section_cm2: 0.0
+er_reaction_probability: 0.0
+
+enable_LH: true
+enable_diffusion: true
+diffusion_mode: rate_only
+diffusion_rate_cap_s: 200.0
+lh_formation_mode: diffusion_limited
+lh_exclude_chemisorption: false
+enable_chemisorption_diffusion: false
+
+enable_h2_blocking: true
+E_h2_bind_eV: 0.051
+h2_desorption_prefactor_s: 1.0e12
+h2_stick_transition_K: 20.0
+h2_stick_prob_lowT: 0.45
+sticking_blocking_strength: 1.0
+er_blocking_strength: 1.0
+h2_beam_stick_probability: 1.0
+
+uv_pulse_enabled: true
+uv_flux_factor: 0.0
+
+enable_grain_cache: true
+grain_cache_dir: grain_cache
+
+use_mrn: false
+
+parameter_sweeps:
+  surface_temperature_k: [80.0, 100.0, 120.0, 150.0]
+  h_gas_density_cm3: [10.0, 1000.0, 10000.0]
+  uv_flux_factor: [0.0]
+

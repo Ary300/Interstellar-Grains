@@ -1,0 +1,12 @@
+metric,value,note
+highT_plateau_mean_100_250K,0.1946296411468375,mean of isothermal ε points (100–250 K)
+highT_min,0.1909664780148019,min across isothermal points
+highT_max,0.20661732694819332,max across isothermal points
+ded_eps10_released_total_mean,0.2115182892238355,mean over 9.5–11.5 K bins (released_total observable)
+ded_eps10_released_total_ci95,0.007808697797144948,95% CI across TPDED replicates
+ded_eps20_released_total_mean,0.45992017715446964,mean over 19.5–21.5 K bins (released_total observable)
+ded_eps20_released_total_ci95,0.008432429506022535,95% CI across TPDED replicates
+ded_eps30_80_released_total_mean,0.29827954868165363,mean over 30–80 K bins (released_total observable)
+ded_eps30_80_released_total_ci95,0.001294578128045512,95% CI across TPDED replicates
+ded_ratio10_over_20_released_total_mean,0.4606143083866171,eps10/eps20 (released_total observable)
+ded_ratio10_over_20_released_total_ci95,0.018603296005672586,95% CI across TPDED replicates

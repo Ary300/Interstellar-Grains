@@ -1,0 +1,27 @@
+{
+  "beam_baseline_separation": {
+    "h2_prompt_desorbed_formed": 0,
+    "h2_released_beam": 8,
+    "h2_released_formed": 0,
+    "impinging_atoms": 0,
+    "impinging_h2": 8
+  },
+  "ded_blocking_off": {
+    "epsilon_10K": 0.3824478551751279,
+    "epsilon_20K": 0.0,
+    "epsilon_30_80K": 0.0,
+    "ratio_10_over_20": 0.0
+  },
+  "ded_blocking_on": {
+    "epsilon_10K": 0.03679090352391026,
+    "epsilon_20K": 0.0,
+    "epsilon_30_80K": 0.0,
+    "ratio_10_over_20": 0.0
+  },
+  "highT_baseline_150K": {
+    "epsilon": 0.1956
+  },
+  "highT_no_chemisorption_150K": {
+    "epsilon": 0.0
+  }
+}

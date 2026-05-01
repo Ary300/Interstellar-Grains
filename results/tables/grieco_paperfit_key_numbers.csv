@@ -1,0 +1,6 @@
+metric,value,ci95,notes
+plateau_eps_mean_100_250K,0.1946296411468375,,mean of isothermal points (100–250 K)
+ded_eps10_released_total,0.2115182892238355,0.007808697797144948,mean over 9.5–11.5 K bins
+ded_eps20_released_total,0.45992017715446964,0.008432429506022535,mean over 19.5–21.5 K bins
+ded_eps30_80_released_total,0.29827954868165363,0.001294578128045512,mean over 30–80 K bins
+ded_ratio10_over_20_released_total,0.4606143083866171,0.018603296005672586,eps10/eps20

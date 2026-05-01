@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import csv
 import json
@@ -6,6 +8,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
+import yaml
 
 from kmc_simulation import KineticMonteCarlo
 
@@ -15,10 +18,12 @@ class DedBin:
     temperature_k: float
     impinging_atoms: int
     h2_desorbed: int
+    h2_released_total: int
     h2_desorbed_LH: int
     h2_desorbed_ER: int
     h2_desorbed_UV: int
-    epsilon: float
+    epsilon_prompt: float
+    epsilon_released_total: float
     theta_h2_mean: float
 
 
@@ -70,6 +75,14 @@ def _default_ded_params() -> Dict[str, float]:
         "gas_temperature_k": 300.0,
         "h_gas_density_cm3": 0.0,
     }
+
+
+def _read_yaml_params(path: str) -> Dict[str, float]:
+    with open(path, "r") as f:
+        data = yaml.safe_load(f) or {}
+    if not isinstance(data, dict):
+        raise TypeError(f"Expected mapping YAML in {path}, got {type(data)}")
+    return data
 
 
 def _run_ded_once(
@@ -127,6 +140,7 @@ def _run_ded_once(
     n_bins = int(np.ceil((t_end_k - t_start_k) / bin_width_k))
     atoms = np.zeros(n_bins, dtype=int)
     h2_des = np.zeros(n_bins, dtype=int)
+    h2_released_total = np.zeros(n_bins, dtype=int)
     h2_des_lh = np.zeros(n_bins, dtype=int)
     h2_des_er = np.zeros(n_bins, dtype=int)
     h2_des_uv = np.zeros(n_bins, dtype=int)
@@ -137,6 +151,7 @@ def _run_ded_once(
 
     prev_atoms = 0
     prev_h2_des = 0
+    prev_h2_released_total = 0
     prev_h2_lh = 0
     prev_h2_er = 0
     prev_h2_uv = 0
@@ -147,7 +162,7 @@ def _run_ded_once(
         prev_theta = float(getattr(kmc, "h2_molecules_on_surface", 0) or 0) / denom_sites
 
     def callback(sim: KineticMonteCarlo, _event: str) -> None:
-        nonlocal prev_atoms, prev_h2_des, prev_h2_lh, prev_h2_er, prev_h2_uv, prev_time, prev_theta
+        nonlocal prev_atoms, prev_h2_des, prev_h2_released_total, prev_h2_lh, prev_h2_er, prev_h2_uv, prev_time, prev_theta
         # Temperature at the event time.
         t_now = float(sim.time)
         T_now = float(t_start_k) + rate_k_per_s * t_now
@@ -172,15 +187,19 @@ def _run_ded_once(
 
         cur_atoms = int(sim.total_impinging_h_atoms)
         cur_h2_des = int(sim.h2_molecules_desorbed)
+        cur_h2_released_total = int(sim.h2_molecules_desorbed + sim.h2_molecules_released_formed)
         cur_h2_lh = int(getattr(sim, "h2_molecules_desorbed_LH", 0))
         cur_h2_er = int(getattr(sim, "h2_molecules_desorbed_ER", 0))
         cur_h2_uv = int(getattr(sim, "h2_molecules_desorbed_UV", 0))
         d_atoms = cur_atoms - prev_atoms
         d_h2_des = cur_h2_des - prev_h2_des
+        d_h2_released_total = cur_h2_released_total - prev_h2_released_total
         if d_atoms:
             atoms[idx] += int(d_atoms)
         if d_h2_des:
             h2_des[idx] += int(d_h2_des)
+        if d_h2_released_total:
+            h2_released_total[idx] += int(d_h2_released_total)
         d_lh = cur_h2_lh - prev_h2_lh
         d_er = cur_h2_er - prev_h2_er
         d_uv = cur_h2_uv - prev_h2_uv
@@ -192,6 +211,7 @@ def _run_ded_once(
             h2_des_uv[idx] += int(d_uv)
         prev_atoms = cur_atoms
         prev_h2_des = cur_h2_des
+        prev_h2_released_total = cur_h2_released_total
         prev_h2_lh = cur_h2_lh
         prev_h2_er = cur_h2_er
         prev_h2_uv = cur_h2_uv
@@ -220,17 +240,20 @@ def _run_ded_once(
     for i in range(n_bins):
         t_center = float(t_start_k) + (i + 0.5) * float(bin_width_k)
         denom = float(max(atoms[i], 1))
-        eps = float(2.0 * float(h2_des[i]) / denom)
+        eps_prompt = float(2.0 * float(h2_des[i]) / denom)
+        eps_released_total = float(2.0 * float(h2_released_total[i]) / denom)
         theta_mean = float(theta_dt[i] / time_dt[i]) if float(time_dt[i]) > 0 else 0.0
         out.append(
             DedBin(
                 temperature_k=t_center,
                 impinging_atoms=int(atoms[i]),
                 h2_desorbed=int(h2_des[i]),
+                h2_released_total=int(h2_released_total[i]),
                 h2_desorbed_LH=int(h2_des_lh[i]),
                 h2_desorbed_ER=int(h2_des_er[i]),
                 h2_desorbed_UV=int(h2_des_uv[i]),
-                epsilon=eps,
+                epsilon_prompt=eps_prompt,
+                epsilon_released_total=eps_released_total,
                 theta_h2_mean=theta_mean,
             )
         )
@@ -268,7 +291,11 @@ def run_ded_validation(
 
     def _summary_for_run(run_bins: List[DedBin]) -> Dict[str, float]:
         def _mean_eps(lo: float, hi: float) -> float:
-            vals = [float(b.epsilon) for b in run_bins if float(b.temperature_k) >= lo and float(b.temperature_k) <= hi]
+            vals = [
+                float(b.epsilon_released_total)
+                for b in run_bins
+                if float(b.temperature_k) >= lo and float(b.temperature_k) <= hi
+            ]
             return float(np.mean(np.array(vals, dtype=float))) if vals else 0.0
 
         eps10 = float(_mean_eps(9.5, 11.5))
@@ -292,9 +319,11 @@ def run_ded_validation(
     rows: List[dict] = []
     for b in range(len(all_bins[0])):
         temps = np.array([run[b].temperature_k for run in all_bins], dtype=float)
-        eps = np.array([run[b].epsilon for run in all_bins], dtype=float)
+        eps_prompt = np.array([run[b].epsilon_prompt for run in all_bins], dtype=float)
+        eps_released_total = np.array([run[b].epsilon_released_total for run in all_bins], dtype=float)
         atoms = np.array([run[b].impinging_atoms for run in all_bins], dtype=float)
         h2d = np.array([run[b].h2_desorbed for run in all_bins], dtype=float)
+        h2rt = np.array([run[b].h2_released_total for run in all_bins], dtype=float)
         theta = np.array([run[b].theta_h2_mean for run in all_bins], dtype=float)
         h2_lh = np.array([run[b].h2_desorbed_LH for run in all_bins], dtype=float)
         h2_er = np.array([run[b].h2_desorbed_ER for run in all_bins], dtype=float)
@@ -308,11 +337,15 @@ def run_ded_validation(
         rows.append(
             {
                 "temperature_k": float(np.mean(temps)),
-                "epsilon_mean": float(np.mean(eps)),
-                "epsilon_std": float(np.std(eps, ddof=1)) if replicates > 1 else 0.0,
-                "epsilon_ci95": float(1.96 * float(np.std(eps, ddof=1)) / float(np.sqrt(replicates))) if replicates > 1 else 0.0,
+                "epsilon_prompt_mean": float(np.mean(eps_prompt)),
+                "epsilon_prompt_std": float(np.std(eps_prompt, ddof=1)) if replicates > 1 else 0.0,
+                "epsilon_prompt_ci95": float(1.96 * float(np.std(eps_prompt, ddof=1)) / float(np.sqrt(replicates))) if replicates > 1 else 0.0,
+                "epsilon_released_total_mean": float(np.mean(eps_released_total)),
+                "epsilon_released_total_std": float(np.std(eps_released_total, ddof=1)) if replicates > 1 else 0.0,
+                "epsilon_released_total_ci95": float(1.96 * float(np.std(eps_released_total, ddof=1)) / float(np.sqrt(replicates))) if replicates > 1 else 0.0,
                 "impinging_atoms_mean": float(np.mean(atoms)),
                 "h2_desorbed_mean": float(np.mean(h2d)),
+                "h2_released_total_mean": float(np.mean(h2rt)),
                 "theta_h2_mean": float(np.mean(theta)),
                 "theta_h2_std": float(np.std(theta, ddof=1)) if replicates > 1 else 0.0,
                 "theta_h2_ci95": float(1.96 * float(np.std(theta, ddof=1)) / float(np.sqrt(replicates))) if replicates > 1 else 0.0,
@@ -332,7 +365,11 @@ def run_ded_validation(
         writer.writerows(rows)
 
     def _mean_eps(lo: float, hi: float) -> float:
-        vals = [float(r["epsilon_mean"]) for r in rows if float(r["temperature_k"]) >= lo and float(r["temperature_k"]) <= hi]
+        vals = [
+            float(r["epsilon_released_total_mean"])
+            for r in rows
+            if float(r["temperature_k"]) >= lo and float(r["temperature_k"]) <= hi
+        ]
         return float(np.mean(np.array(vals, dtype=float))) if vals else 0.0
 
     eps10 = _mean_eps(9.5, 11.5)
@@ -384,6 +421,7 @@ def run_ded_validation(
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="DED-style (<100 K) validation with temperature ramp and H2 blocking.")
+    p.add_argument("--base-config", default=None, help="Optional YAML file providing a base parameter set")
     p.add_argument("--output", default="results/grieco_ded_validation.csv", help="Output CSV path")
     p.add_argument("--summary-json", default=None, help="Optional output JSON with key DED metrics and CI")
     p.add_argument("--replicates", type=int, default=3, help="Independent ramps to average")
@@ -401,6 +439,8 @@ def _parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = _parse_args()
     base = _default_ded_params()
+    if args.base_config:
+        base.update(_read_yaml_params(str(args.base_config)))
     if args.arrival_rate_per_site is not None:
         base["arrival_rate_per_site_s"] = float(args.arrival_rate_per_site)
     if args.uv_flux_factor is not None:

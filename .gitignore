@@ -2,6 +2,16 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.venv/
+.venv-py313/
+*.code-workspace
+_tmp_*
+tmp_*
+results/plots/manuscript/_fig01_grain_lattice_render.*
 # Project-generated cache/results
 grain_cache/
+grain_cache_test/
+results/_*
+results/tmp_*
+results/plots/_*
 # results/

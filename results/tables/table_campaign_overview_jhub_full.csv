@@ -1,0 +1,2 @@
+dataset,rows,n_unique_T,n_unique_nH,n_unique_uv,ensemble_runs,burnin_arrivals,measure_arrivals,er_frac_mean,lh_frac_mean,h2_release_rate_cm2_s_min,h2_release_rate_cm2_s_median,h2_release_rate_cm2_s_max,total_h2_formed_min,total_h2_formed_median,total_h2_formed_max,epsilon_min,epsilon_median,epsilon_max
+jhub_full,240,15,4,4,20,5000,20000,0.3873737116426609,0.612626288357339,1803.975683515123,494005.599216164,31923112.605675597,160.7,2127.75,2851.5,0.0160699999999999,0.212775,0.28515

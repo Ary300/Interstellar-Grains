@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import csv
 import os
@@ -5,6 +7,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 import numpy as np
+import yaml
 
 from kmc_simulation import KineticMonteCarlo
 
@@ -60,11 +63,21 @@ def _default_coronene_like_params() -> Dict[str, float]:
     }
 
 
+def _read_yaml_params(path: str) -> Dict[str, float]:
+    with open(path, "r") as f:
+        data = yaml.safe_load(f) or {}
+    if not isinstance(data, dict):
+        raise TypeError(f"Expected mapping YAML in {path}, got {type(data)}")
+    return data
+
+
 def _run_once(
     temperature_k: float,
     base_params: Dict[str, float],
     burnin_arrivals: int,
     measure_arrivals: int,
+    burnin_exposure_atoms_cm2: float | None,
+    measure_exposure_atoms_cm2: float | None,
     seed: int,
     max_steps: int | None,
 ) -> GriecoRunResult:
@@ -73,8 +86,13 @@ def _run_once(
     sim_params["rng_seed"] = int(seed)
 
     # Burn-in to reach a quasi steady-state chemisorbed reservoir.
-    if burnin_arrivals > 0:
-        sim_params["max_arrivals"] = int(burnin_arrivals)
+    if (burnin_exposure_atoms_cm2 is not None and float(burnin_exposure_atoms_cm2) > 0.0) or burnin_arrivals > 0:
+        sim_params.pop("max_arrivals", None)
+        sim_params.pop("target_exposure_atoms_cm2", None)
+        if burnin_exposure_atoms_cm2 is not None and float(burnin_exposure_atoms_cm2) > 0.0:
+            sim_params["target_exposure_atoms_cm2"] = float(burnin_exposure_atoms_cm2)
+        elif burnin_arrivals > 0:
+            sim_params["max_arrivals"] = int(burnin_arrivals)
         kmc = KineticMonteCarlo(sim_params)
         kmc.run_gillespie(max_time=1e30, max_steps=max_steps)
     else:
@@ -97,7 +115,12 @@ def _run_once(
     kmc.h2_molecules_formed_ER = 0
     kmc.h2_molecules_formed_UV = 0
 
-    kmc.simulation_parameters["max_arrivals"] = int(measure_arrivals)
+    kmc.simulation_parameters.pop("max_arrivals", None)
+    kmc.simulation_parameters.pop("target_exposure_atoms_cm2", None)
+    if measure_exposure_atoms_cm2 is not None and float(measure_exposure_atoms_cm2) > 0.0:
+        kmc.simulation_parameters["target_exposure_atoms_cm2"] = float(measure_exposure_atoms_cm2)
+    else:
+        kmc.simulation_parameters["max_arrivals"] = int(measure_arrivals)
     kmc.run_gillespie(max_time=1e30, max_steps=max_steps)
 
     eps = 0.0
@@ -120,6 +143,8 @@ def run_grieco_validation(
     replicates: int,
     burnin_arrivals: int,
     measure_arrivals: int,
+    burnin_exposure_atoms_cm2: float | None,
+    measure_exposure_atoms_cm2: float | None,
     max_steps: int | None,
     base_params: Dict[str, float] | None = None,
 ) -> None:
@@ -134,6 +159,8 @@ def run_grieco_validation(
                 base_params=base_params,
                 burnin_arrivals=burnin_arrivals,
                 measure_arrivals=measure_arrivals,
+                burnin_exposure_atoms_cm2=burnin_exposure_atoms_cm2,
+                measure_exposure_atoms_cm2=measure_exposure_atoms_cm2,
                 seed=1000 + i,
                 max_steps=max_steps,
             )
@@ -166,11 +193,14 @@ def run_grieco_validation(
 
 def _parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Validate high-T H2 formation efficiency (Grieco et al. 2023) in this KMC model.")
+    p.add_argument("--base-config", default=None, help="Optional YAML file providing a base parameter set")
     p.add_argument("--output", default="results/grieco_validation.csv", help="Output CSV path")
     p.add_argument("--temps", nargs="+", type=float, default=[100, 150, 200, 250], help="Surface temperatures (K)")
     p.add_argument("--replicates", type=int, default=5, help="Runs per temperature")
     p.add_argument("--burnin-arrivals", type=int, default=2000, help="Arrivals discarded for burn-in")
     p.add_argument("--measure-arrivals", type=int, default=5000, help="Arrivals used for epsilon measurement")
+    p.add_argument("--burnin-exposure-atoms-cm2", type=float, default=None, help="Optional burn-in exposure stop (overrides --burnin-arrivals)")
+    p.add_argument("--measure-exposure-atoms-cm2", type=float, default=None, help="Optional measurement exposure stop (overrides --measure-arrivals)")
     p.add_argument("--max-steps", type=int, default=500000, help="Hard cap on KMC steps per phase")
     p.add_argument("--arrival-rate-per-site", type=float, default=None, help="Override arrival_rate_per_site_s")
     p.add_argument("--sticking-probability", type=float, default=None, help="Override sticking_probability")
@@ -182,6 +212,10 @@ def _parse_args() -> argparse.Namespace:
 if __name__ == "__main__":
     args = _parse_args()
     base = _default_coronene_like_params()
+    cfg = {}
+    if args.base_config:
+        cfg = _read_yaml_params(str(args.base_config))
+        base.update(cfg)
     if args.arrival_rate_per_site is not None:
         base["arrival_rate_per_site_s"] = float(args.arrival_rate_per_site)
     if args.sticking_probability is not None:
@@ -196,6 +230,8 @@ if __name__ == "__main__":
         replicates=int(args.replicates),
         burnin_arrivals=int(args.burnin_arrivals),
         measure_arrivals=int(args.measure_arrivals),
+        burnin_exposure_atoms_cm2=float(args.burnin_exposure_atoms_cm2) if args.burnin_exposure_atoms_cm2 is not None else cfg.get("burnin_exposure_atoms_cm2"),
+        measure_exposure_atoms_cm2=float(args.measure_exposure_atoms_cm2) if args.measure_exposure_atoms_cm2 is not None else cfg.get("measure_exposure_atoms_cm2"),
         max_steps=int(args.max_steps) if args.max_steps else None,
         base_params=base,
     )

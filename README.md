@@ -71,6 +71,21 @@ For “defensibility” tooling:
 - `python grieco_sanity_checks.py` runs quick ε-accounting sanity cases (dissociation off, strong H2 binding, etc.).
 - `python grieco_sensitivity.py --mode oat` produces a one‑at‑a‑time sensitivity CSV (and `--mode prcc` can produce a small PRCC table; it can be slow).
 
+For paper referee-proofing / methodology cross-checks:
+
+- `python grieco_validation.py --base-config config_grieco_paper_iso_predmodel.yaml --output results/grieco_validation_paper_iso_predmodel.csv`
+  reruns the isothermal Grieco check with the ISM-style prediction-model structure (porosity 0.2, diffusion-limited transport knobs).
+- `python grieco_ded_validation.py --base-config config_grieco_paper_ded_predmodel.yaml --output results/grieco_ded_paper_ded_predmodel.csv --summary-json results/grieco_ded_paper_ded_predmodel_summary.json`
+  reruns the TPDED-style low-T validation with the prediction-model structure.
+- `python compare_grieco_model_variants.py`
+  compares the baseline paperfit validation against the prediction-model cross-check and writes a single summary CSV.
+- `python run_sweep.py config_astro_transport_sensitivity.yaml`
+  plus `python plot_transport_sensitivity.py --input results/astro_transport_sensitivity.csv`
+  quantifies sensitivity to `lh_diffusion_factor` and `diffusion_rate_cap_s`.
+- `python run_sweep.py config_astro_mrn_integration.yaml`
+  plus `python plot_mrn_comparison.py --single-input results/jhub_full_merged.csv --mrn-input results/astro_mrn_integration.csv --nH 1000 --uv 0`
+  measures the MRN grain-size correction factor relative to the single-grain paperfit sweep.
+
 Runtime note: the default harness runs are designed to be local-friendly; HPC is mainly helpful for dense grids and large ensembles (e.g., ≥20–50 replicates across many temperatures/UV values).
 
 Optional performance knob: set `enable_grain_cache: true` in configs to reuse pre-generated grain topology/energy maps across runs. You can also set `grain_cache_dir` (default: `grain_cache`) and `grain_cache_include_rng_seed` if you want separate cached grains per RNG seed.
@@ -81,6 +96,10 @@ For ISM-like production runs (gas-kinetic adsorption mode), use:
 
 - `config_astro_pilot.yaml` for short pilot checks.
 - `config_astro_full.yaml` for large UV/T/nH sweeps.
+- `config_astro_transition_deep.yaml` for 1000-realization transition-region distributions (80–120 K).
+- `config_astro_sensitivity_knobs.yaml` for chemisorption-fraction / ER-probability sensitivity bands.
+- `config_astro_transport_sensitivity.yaml` for `lh_diffusion_factor` / `diffusion_rate_cap_s` sensitivity.
+- `config_astro_mrn_integration.yaml` for a compact MRN-integrated slice suitable for paper figures/tables.
 
 Run locally:
 

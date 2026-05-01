@@ -1,0 +1,2 @@
+surface_temperature_k,h_gas_density_cm3,uv_flux_factor,sigma_H_cm2_per_H,h2_release_rate_cm2_s,k_eff_cm3_s,t_H2_Myr,t_ff_Myr,t_H2_over_t_ff
+60.0,1000.0,0.0,1e-21,3086476.5643277233,1.2345906257310892e-17,1.2833439341589108,1.3752112250446755,0.9331976868624089

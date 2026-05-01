@@ -35,7 +35,9 @@ This checklist maps your research scope to code artifacts in this repository.
 
 ## 5) Remaining science work (not boilerplate)
 
-- [ ] Run full UV-T-nH campaign on Anvil and merge outputs.
-- [ ] Produce final paper figures/tables (epsilon surfaces, mechanism decomposition, astro rate law).
-- [ ] Add external benchmark or flux-dependent cross-check in ISM mode for manuscript robustness.
-
+- [ ] Run transition-region deep ensembles (`config_astro_transition_deep.yaml`) and plot the stochastic distributions.
+- [ ] Run sensitivity envelope checks (`config_astro_sensitivity_knobs.yaml`, `config_astro_transport_sensitivity.yaml`).
+- [ ] Run the validation-vs-prediction cross-check (`config_grieco_paper_*_predmodel.yaml`) and summarize with `compare_grieco_model_variants.py`.
+- [ ] Run quick referee checks (LH mode consistency, porosity, grain size, sticking model).
+- [ ] Run MRN integration slice (`config_astro_mrn_integration.yaml`) and compare to the single-grain campaign.
+- [ ] Produce final paper figures/tables (validation summary, mechanism decomposition, timescale table, MRN correction).

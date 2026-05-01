@@ -1,0 +1,63 @@
+# Paper-matching (DED ramp) parameter template for Grieco et al. 2023 ε(T) below ~100 K.
+#
+# Use with:
+#   python grieco_ded_validation.py --base-config config_grieco_paper_ded.yaml --t-start 10 --t-end 80 --rate-k-per-min 1 --bin-width 1 \
+#     --replicates 10 --output results/grieco_ded_validation_paperfit.csv --summary-json results/grieco_ded_validation_paperfit_summary.json
+#
+# Notes:
+# - We use `diffusion_mode: rate_only` + `lh_formation_mode: diffusion_limited` to approximate
+#   the fast-diffusion limit without simulating every hop during a 70-minute ramp.
+
+grain_radius_um: 0.005
+site_area_angstroms_sq: 25
+use_3d_lattice: true
+porosity_fraction: 0.0
+
+chemisorption_fraction: 0.35
+surface_defect_fraction: 0.15
+
+E_phys_mean_meV: 45.0
+heterogeneity_E_bind_sigma_meV: 5.0
+E_chem_mean_eV: 1.75
+heterogeneity_E_chem_sigma_eV: 0.25
+
+# Beam-like arrivals (flux + angle)
+# With site_area=25 Å², tau=0.7, angle=40° this gives ~0.01 atoms/site/s.
+beam_flux_total_cm2_s: 7.46e12
+beam_incidence_angle_deg: 40.0
+beam_dissociation_fraction: 0.7
+
+# Optional burn-in exposure at 10 K (atoms/cm²) before ramping.
+# Set to 0 / remove to start from a clean surface.
+burnin_exposure_atoms_cm2: 0.0
+
+sticking_probability: 0.5
+sticking_temp_model: constant
+er_cross_section_cm2: 1.0e-15
+er_reaction_probability: 0.9
+
+# Enable LH + diffusion, but do not simulate diffusion as explicit hops (tractable ramps).
+enable_LH: true
+enable_diffusion: true
+diffusion_mode: rate_only
+diffusion_rate_cap_s: 10.0
+lh_formation_mode: diffusion_limited
+lh_encounter_neighbors: 3.0
+lh_diffusion_factor: 0.5
+
+# Preserve high-T chemisorbed reservoir during the ramp.
+lh_exclude_chemisorption: true
+enable_chemisorption_diffusion: false
+
+# Low-T blocking by adsorbed H2 (tunable)
+enable_h2_blocking: true
+E_h2_bind_eV: 0.03
+h2_desorption_prefactor_s: 1.0e12
+h2_stick_transition_K: 19.0
+h2_stick_prob_lowT: 0.8
+sticking_blocking_strength: 1.0
+er_blocking_strength: 1.0
+h2_beam_stick_probability: 1.0
+
+uv_flux_factor: 0.0
+uv_pulse_enabled: false

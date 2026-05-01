@@ -1,0 +1,2 @@
+surface_temperature_k,h_gas_density_cm3,epsilon_porosity_0p0,epsilon_porosity_0p2,epsilon_frac_change,rate_porosity_0p0,rate_porosity_0p2,rate_frac_change
+100.0,100.0,0.2286666666666666,0.2274733333333333,-0.005218658892128136,331715.7048166268,329710.54137260455,-0.006044825176820368

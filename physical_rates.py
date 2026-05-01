@@ -203,7 +203,7 @@ def h2_formation_er_rate(gas_flux_cm2_s, h_atoms_count):
     
     # Reaction probability (can be temperature dependent)
     reaction_probability = 0.1  # 10% probability
-    
+   
     return gas_flux_cm2_s * cross_section_cm2 * reaction_probability * h_atoms_count
 
 
@@ -227,14 +227,13 @@ def uv_photodesorption_rate(uv_flux_photons_cm2_s, h_atoms_count):
     return uv_flux_photons_cm2_s * cross_section * yield_param * h_atoms_count
 
 
-def uv_h2_formation_rate(uv_flux_photons_cm2_s, adjacent_pairs_count, site_area_cm2):
+def uv_h2_formation_rate(uv_flux_photons_cm2_s, adjacent_pairs_count):
     """
     Calculate UV-assisted H2 formation rate.
     
     Args:
         uv_flux_photons_cm2_s: UV photon flux (photons cm^-2 s^-1)
         adjacent_pairs_count: Number of adjacent H atom pairs
-        site_area_cm2: Site area (cm^2)
     
     Returns:
         UV H2 formation rate (s^-1)
@@ -245,7 +244,41 @@ def uv_h2_formation_rate(uv_flux_photons_cm2_s, adjacent_pairs_count, site_area_
     cross_section = UV_PARAMS["absorption_cross_section_cm2"]
     yield_param = UV_PARAMS["photodissociation_yield"]  # Very low for H2
     
-    return uv_flux_photons_cm2_s * cross_section * yield_param * adjacent_pairs_count * site_area_cm2
+    return uv_flux_photons_cm2_s * cross_section * yield_param * adjacent_pairs_count
+
+
+def uv_h2_photofragmentation_rate(
+    uv_flux_photons_cm2_s,
+    chemisorbed_h_count,
+    active_motif_count=None,
+    absorption_cross_section_cm2=None,
+    branching_ratio=None,
+):
+    """
+    Exploratory UV-driven H2-loss rate from a chemisorbed-H reservoir.
+
+    This is a phenomenological PAH-like channel: UV absorption acts on a
+    superhydrogenated carbon site/reservoir and ejects H2 without requiring
+    two explicitly adjacent lattice H atoms.
+    """
+    if chemisorbed_h_count < 2:
+        return 0.0
+
+    cross_section = (
+        UV_PARAMS.get("pah_absorption_cross_section_cm2", UV_PARAMS["absorption_cross_section_cm2"])
+        if absorption_cross_section_cm2 is None
+        else float(absorption_cross_section_cm2)
+    )
+    branching_ratio = (
+        UV_PARAMS.get("photofragmentation_branching_ratio", UV_PARAMS.get("photofragmentation_yield", 1e-4))
+        if branching_ratio is None
+        else float(branching_ratio)
+    )
+    h_per_event = float(UV_PARAMS.get("photofragmentation_h_per_event", 2.0))
+    if active_motif_count is None:
+        active_motif_count = float(chemisorbed_h_count) / max(h_per_event, 1.0)
+    effective_targets = max(0.0, float(active_motif_count))
+    return uv_flux_photons_cm2_s * cross_section * branching_ratio * effective_targets
 
 
 def adsorption_rate(gas_density_cm3, temperature_k, sticking_probability, accessible_area_cm2):
