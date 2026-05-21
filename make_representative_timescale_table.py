@@ -49,7 +49,16 @@ def main() -> None:
     p.add_argument("--out", default="results/tables/table_timescales_representative.csv", help="Output CSV path")
     p.add_argument("--sigma-H", dest="sigma_H", type=float, default=1e-21, help="Total grain cross-section per H [cm^2/H]")
     p.add_argument("--mu", type=float, default=1.4, help="Mean mass per H nucleus in units of m_H. Default: 1.4")
+    p.add_argument(
+        "--Z",
+        dest="metallicity",
+        action="append",
+        type=float,
+        default=None,
+        help="Optional metallicity scaling(s) Z' applied linearly to dust abundance. Repeatable. Default: 1.0",
+    )
     args = p.parse_args()
+    metallicities = args.metallicity if args.metallicity else [1.0]
 
     df = pd.read_csv(args.input)
     for c in ["surface_temperature_k", "h_gas_density_cm3", "uv_flux_factor"]:
@@ -74,32 +83,36 @@ def main() -> None:
         row = _select_row(df, T=sc["T"], nH=sc["nH"], uv=sc["uv"])
         R_area = float(row[rate_col])
         nH = float(row["h_gas_density_cm3"])
-
-        # Effective k_eff for mostly-atomic gas: R_vol = k_eff nH^2 with k_eff = 4 σ_H R_area / nH
-        k_eff = 4.0 * float(args.sigma_H) * float(R_area) / float(nH)
-
-        # Atomic->molecular timescale (e-folding, atomic gas): t_H2 ≈ 1 / (2 k_eff nH) = 1/(8 σ_H R_area)
-        t_h2_s = 1.0 / (8.0 * float(args.sigma_H) * float(R_area))
-        t_h2_myr = t_h2_s / float(SEC_PER_MYR)
-
         rho = float(args.mu) * float(M_H_G) * float(nH)
         t_ff_s = math.sqrt((3.0 * math.pi) / (32.0 * float(G_CGS) * float(rho)))
         t_ff_myr = t_ff_s / float(SEC_PER_MYR)
 
-        out_rows.append(
-            {
-                "scenario": name,
-                "surface_temperature_k": float(row["surface_temperature_k"]),
-                "h_gas_density_cm3": nH,
-                "uv_flux_factor": float(row["uv_flux_factor"]),
-                "sigma_H_cm2_per_H": float(args.sigma_H),
-                "h2_release_rate_cm2_s": float(R_area),
-                "k_eff_cm3_s": float(k_eff),
-                "t_H2_Myr": float(t_h2_myr),
-                "t_ff_Myr": float(t_ff_myr),
-                "t_H2_over_t_ff": float(t_h2_s / t_ff_s),
-            }
-        )
+        for z_prime in metallicities:
+            sigma_eff = float(args.sigma_H) * float(z_prime)
+
+            # Effective k_eff for mostly-atomic gas: R_vol = k_eff nH^2 with k_eff = 4 σ_H R_area / nH
+            k_eff = 4.0 * sigma_eff * float(R_area) / float(nH)
+
+            # Atomic->molecular timescale (e-folding, atomic gas): t_H2 ≈ 1 / (2 k_eff nH) = 1/(8 σ_H R_area)
+            t_h2_s = 1.0 / (8.0 * sigma_eff * float(R_area))
+            t_h2_myr = t_h2_s / float(SEC_PER_MYR)
+
+            out_rows.append(
+                {
+                    "scenario": name,
+                    "surface_temperature_k": float(row["surface_temperature_k"]),
+                    "h_gas_density_cm3": nH,
+                    "uv_flux_factor": float(row["uv_flux_factor"]),
+                    "Z_prime": float(z_prime),
+                    "sigma_H_cm2_per_H": float(args.sigma_H),
+                    "sigma_H_effective_cm2_per_H": float(sigma_eff),
+                    "h2_release_rate_cm2_s": float(R_area),
+                    "k_eff_cm3_s": float(k_eff),
+                    "t_H2_Myr": float(t_h2_myr),
+                    "t_ff_Myr": float(t_ff_myr),
+                    "t_H2_over_t_ff": float(t_h2_s / t_ff_s),
+                }
+            )
 
     out = pd.DataFrame(out_rows)
     out.to_csv(args.out, index=False)
@@ -108,4 +121,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
